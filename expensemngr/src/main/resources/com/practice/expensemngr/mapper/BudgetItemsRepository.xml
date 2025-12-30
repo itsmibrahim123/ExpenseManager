@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.BudgetItemsRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.BudgetItems">
+        <!--@JPA.Support generated on 2025-11-26 17:56:33.-->
+        <!--@Table budget_items-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="budget_id" jdbcType="BIGINT" property="budgetId"/>
+        <result column="category_id" jdbcType="BIGINT" property="categoryId"/>
+        <result column="limit_amount" jdbcType="DECIMAL" property="limitAmount"/>
+        <result column="warning_percent" jdbcType="INTEGER" property="warningPercent"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:33.-->
+        id, budget_id, category_id, limit_amount, warning_percent
+    </sql>
+</mapper>

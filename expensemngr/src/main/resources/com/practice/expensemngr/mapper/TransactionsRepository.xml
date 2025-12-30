@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.TransactionsRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.Transactions">
+        <!--@JPA.Support generated on 2025-11-26 17:56:39.-->
+        <!--@Table transactions-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="BIGINT" property="userId"/>
+        <result column="account_id" jdbcType="BIGINT" property="accountId"/>
+        <result column="category_id" jdbcType="BIGINT" property="categoryId"/>
+        <result column="payment_method_id" jdbcType="BIGINT" property="paymentMethodId"/>
+        <result column="merchant_id" jdbcType="BIGINT" property="merchantId"/>
+        <result column="recurring_rule_id" jdbcType="BIGINT" property="recurringRuleId"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="amount" jdbcType="DECIMAL" property="amount"/>
+        <result column="currency_code" jdbcType="CHAR" property="currencyCode"/>
+        <result column="exchange_rate_to_base" jdbcType="DECIMAL" property="exchangeRateToBase"/>
+        <result column="base_amount" jdbcType="DECIMAL" property="baseAmount"/>
+        <result column="transaction_date" jdbcType="DATE" property="transactionDate"/>
+        <result column="transaction_time" jdbcType="TIME" property="transactionTime"/>
+        <result column="status" jdbcType="VARCHAR" property="status"/>
+        <result column="reference_number" jdbcType="VARCHAR" property="referenceNumber"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="is_recurring_instance" jdbcType="TINYINT" property="recurringInstance"/>
+        <result column="linked_transaction_id" jdbcType="BIGINT" property="linkedTransactionId"/>
+        <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:39.-->
+        id, user_id, account_id, category_id, payment_method_id, merchant_id, recurring_rule_id, `type`, amount,
+        currency_code, exchange_rate_to_base, base_amount, transaction_date, transaction_time, `status`,
+        reference_number, description, is_recurring_instance, linked_transaction_id, created_at, updated_at
+    </sql>
+</mapper>

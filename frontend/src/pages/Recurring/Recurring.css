@@ -1,0 +1,21 @@
+.recurring-container {
+    padding: 2rem;
+}
+
+.recurring-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.recurring-table th, .recurring-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.recurring-table th {
+    background: rgba(255, 255, 255, 0.2);
+}

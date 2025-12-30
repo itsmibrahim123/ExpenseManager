@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.UsersRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.Users">
+        <!--@JPA.Support generated on 2025-11-26 17:56:39.-->
+        <!--@Table users-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="full_name" jdbcType="VARCHAR" property="fullName"/>
+        <result column="email" jdbcType="VARCHAR" property="email"/>
+        <result column="password_hash" jdbcType="VARCHAR" property="passwordHash"/>
+        <result column="status" jdbcType="VARCHAR" property="status"/>
+        <result column="preferred_currency" jdbcType="CHAR" property="preferredCurrency"/>
+        <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:39.-->
+        id, full_name, email, password_hash, `status`, preferred_currency, created_at, updated_at
+    </sql>
+</mapper>

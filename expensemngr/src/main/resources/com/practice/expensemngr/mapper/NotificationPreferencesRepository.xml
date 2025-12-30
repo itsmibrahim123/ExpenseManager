@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.NotificationPreferencesRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.NotificationPreferences">
+        <!--@JPA.Support generated on 2025-11-26 17:56:37.-->
+        <!--@Table notification_preferences-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="BIGINT" property="userId"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="channel" jdbcType="VARCHAR" property="channel"/>
+        <result column="is_enabled" jdbcType="TINYINT" property="enabled"/>
+        <result column="threshold_amount" jdbcType="DECIMAL" property="thresholdAmount"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:37.-->
+        id, user_id, `type`, channel, is_enabled, threshold_amount
+    </sql>
+</mapper>

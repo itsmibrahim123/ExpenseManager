@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.ExchangeRatesRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.ExchangeRates">
+        <!--@JPA.Support generated on 2025-11-26 17:56:35.-->
+        <!--@Table exchange_rates-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="from_code" jdbcType="CHAR" property="fromCode"/>
+        <result column="to_code" jdbcType="CHAR" property="toCode"/>
+        <result column="rate" jdbcType="DECIMAL" property="rate"/>
+        <result column="rate_date" jdbcType="DATE" property="rateDate"/>
+        <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:35.-->
+        id, from_code, to_code, rate, rate_date, created_at
+    </sql>
+</mapper>

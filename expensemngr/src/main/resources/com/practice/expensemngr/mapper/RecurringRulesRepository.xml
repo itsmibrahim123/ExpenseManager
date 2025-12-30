@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.RecurringRulesRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.RecurringRules">
+        <!--@JPA.Support generated on 2025-11-26 17:56:37.-->
+        <!--@Table recurring_rules-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="BIGINT" property="userId"/>
+        <result column="account_id" jdbcType="BIGINT" property="accountId"/>
+        <result column="category_id" jdbcType="BIGINT" property="categoryId"/>
+        <result column="payment_method_id" jdbcType="BIGINT" property="paymentMethodId"/>
+        <result column="merchant_id" jdbcType="BIGINT" property="merchantId"/>
+        <result column="type" jdbcType="VARCHAR" property="type"/>
+        <result column="amount" jdbcType="DECIMAL" property="amount"/>
+        <result column="currency_code" jdbcType="CHAR" property="currencyCode"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="frequency" jdbcType="VARCHAR" property="frequency"/>
+        <result column="interval_val" jdbcType="INTEGER" property="intervalVal"/>
+        <result column="day_of_month" jdbcType="INTEGER" property="dayOfMonth"/>
+        <result column="day_of_week" jdbcType="VARCHAR" property="dayOfWeek"/>
+        <result column="start_date" jdbcType="DATE" property="startDate"/>
+        <result column="end_date" jdbcType="DATE" property="endDate"/>
+        <result column="next_run_date" jdbcType="DATE" property="nextRunDate"/>
+        <result column="is_active" jdbcType="TINYINT" property="active"/>
+        <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:37.-->
+        id, user_id, account_id, category_id, payment_method_id, merchant_id, `type`, amount, currency_code,
+        description, frequency, interval_val, day_of_month, day_of_week, start_date, end_date, next_run_date, is_active,
+        created_at, updated_at
+    </sql>
+</mapper>

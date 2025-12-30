@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.AttachmentsRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.Attachments">
+        <!--@JPA.Support generated on 2025-11-26 17:56:32.-->
+        <!--@Table attachments-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="transaction_id" jdbcType="BIGINT" property="transactionId"/>
+        <result column="file_name" jdbcType="VARCHAR" property="fileName"/>
+        <result column="file_path" jdbcType="VARCHAR" property="filePath"/>
+        <result column="mime_type" jdbcType="VARCHAR" property="mimeType"/>
+        <result column="file_size_bytes" jdbcType="BIGINT" property="fileSizeBytes"/>
+        <result column="uploaded_at" jdbcType="TIMESTAMP" property="uploadedAt"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:32.-->
+        id, transaction_id, file_name, file_path, mime_type, file_size_bytes, uploaded_at
+    </sql>
+</mapper>

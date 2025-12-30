@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.practice.expensemngr.repository.CurrenciesRepository">
+    <resultMap id="BaseResultMap" type="com.practice.expensemngr.entity.Currencies">
+        <!--@JPA.Support generated on 2025-11-26 17:56:35.-->
+        <!--@Table currencies-->
+        <id column="code" jdbcType="CHAR" property="code"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="symbol" jdbcType="VARCHAR" property="symbol"/>
+        <result column="decimal_places" jdbcType="INTEGER" property="decimalPlaces"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@JPA.Support generated on 2025-11-26 17:56:35.-->
+        code, `name`, symbol, decimal_places
+    </sql>
+</mapper>
