@@ -1,12 +1,12 @@
-package io.saadmughal.assignment05.controller;
+package com.practice.expensemngr.controller;
 
-com.practice.expensemngr.dto.UsersDTO;
-com.practice.expensemngr.dto.UserRegistrationResponseDTO;
-com.practice.expensemngr.service.UsersService;
-com.practice.expensemngr.vo.UserRegistrationRequestVO;
-com.practice.expensemngr.vo.UsersQueryVO;
-com.practice.expensemngr.vo.UsersUpdateVO;
-com.practice.expensemngr.vo.UsersVO;
+import com.practice.expensemngr.dto.UsersDTO;
+import com.practice.expensemngr.dto.UserRegistrationResponseDTO;
+import  com.practice.expensemngr.service.UsersService;
+import com.practice.expensemngr.vo.UserRegistrationRequestVO;
+import com.practice.expensemngr.vo.UsersQueryVO;
+import com.practice.expensemngr.vo.UsersUpdateVO;
+import com.practice.expensemngr.vo.UsersVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-com.practice.expensemngr.dto.LoginRequestDTO;
-com.practice.expensemngr.dto.LoginResponseDTO;
+import com.practice.expensemngr.dto.LoginRequestDTO;
+import com.practice.expensemngr.dto.LoginResponseDTO;
 
 @Validated
 @RestController

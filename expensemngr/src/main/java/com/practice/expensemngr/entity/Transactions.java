@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.entity;
+package com.practice.expensemngr.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -36,6 +36,10 @@ public class Transactions implements Serializable {
 
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", referencedColumnName = "id", insertable = false, updatable = false)
+    private Categories category;
 
     @Column(name = "payment_method_id")
     private Long paymentMethodId;
@@ -87,5 +91,6 @@ public class Transactions implements Serializable {
 
     @Column(name = "updated_at", nullable = false)
     private Date updatedAt;
+
 
 }

@@ -1,12 +1,12 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.*;
-import io.saadmughal.assignment05.entity.NotificationPreferences;
-import io.saadmughal.assignment05.exception.InvalidThresholdAmountException;
-import io.saadmughal.assignment05.exception.NotificationPreferenceNotFoundException;
-import io.saadmughal.assignment05.repository.NotificationPreferencesRepository;
-import io.saadmughal.assignment05.util.NotificationChannelEnum;
-import io.saadmughal.assignment05.util.NotificationTypeEnum;
+import com.practice.expensemngr.dto.*;
+import com.practice.expensemngr.entity.NotificationPreferences;
+import com.practice.expensemngr.exception.InvalidThresholdAmountException;
+import com.practice.expensemngr.exception.NotificationPreferenceNotFoundException;
+import com.practice.expensemngr.repository.NotificationPreferencesRepository;
+import com.practice.expensemngr.util.NotificationChannelEnum;
+import com.practice.expensemngr.util.NotificationTypeEnum;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

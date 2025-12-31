@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.util;
+package com.practice.expensemngr.util;
 
 /**
  * Enum for types of data that can be exported

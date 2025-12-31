@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.util;
+package com.practice.expensemngr.util;
 
 import java.util.Calendar;
 import java.util.Date;

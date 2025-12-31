@@ -2,6 +2,7 @@ package com.practice.expensemngr.service;
 
 import com.practice.expensemngr.dto.TransactionTagsDTO;
 import com.practice.expensemngr.entity.TransactionTags;
+import com.practice.expensemngr.entity.TransactionTagsId;
 import com.practice.expensemngr.repository.TransactionTagsRepository;
 import com.practice.expensemngr.vo.TransactionTagsQueryVO;
 import com.practice.expensemngr.vo.TransactionTagsUpdateVO;
@@ -26,18 +27,19 @@ public class TransactionTagsService {
         return bean.getTransactionId();
     }
 
-    public void delete(Long id) {
+    public void delete(Long transactionId, Long tagId) {
+        TransactionTagsId id = new TransactionTagsId(transactionId, tagId);
         transactionTagsRepository.deleteById(id);
     }
 
-    public void update(Long id, TransactionTagsUpdateVO vO) {
-        TransactionTags bean = requireOne(id);
+    public void update(Long transactionId, Long tagId, TransactionTagsUpdateVO vO) {
+        TransactionTags bean = requireOne(transactionId, tagId);
         BeanUtils.copyProperties(vO, bean);
         transactionTagsRepository.save(bean);
     }
 
-    public TransactionTagsDTO getById(Long id) {
-        TransactionTags original = requireOne(id);
+    public TransactionTagsDTO getById(Long transactionId, Long tagId) {
+        TransactionTags original = requireOne(transactionId, tagId);
         return toDTO(original);
     }
 
@@ -51,7 +53,8 @@ public class TransactionTagsService {
         return bean;
     }
 
-    private TransactionTags requireOne(Long id) {
+    private TransactionTags requireOne(Long transactionId, Long tagId) {
+        TransactionTagsId id = new TransactionTagsId(transactionId, tagId);
         return transactionTagsRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Resource not found: " + id));
     }

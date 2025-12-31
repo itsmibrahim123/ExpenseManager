@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.CurrenciesDTO;
-import io.saadmughal.assignment05.entity.Currencies;
-import io.saadmughal.assignment05.repository.CurrenciesRepository;
-import io.saadmughal.assignment05.vo.CurrenciesQueryVO;
-import io.saadmughal.assignment05.vo.CurrenciesUpdateVO;
-import io.saadmughal.assignment05.vo.CurrenciesVO;
+import com.practice.expensemngr.dto.CurrenciesDTO;
+import com.practice.expensemngr.entity.Currencies;
+import com.practice.expensemngr.repository.CurrenciesRepository;
+import com.practice.expensemngr.vo.CurrenciesQueryVO;
+import com.practice.expensemngr.vo.CurrenciesUpdateVO;
+import com.practice.expensemngr.vo.CurrenciesVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

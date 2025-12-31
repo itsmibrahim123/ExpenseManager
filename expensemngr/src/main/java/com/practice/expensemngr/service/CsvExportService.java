@@ -1,7 +1,7 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.*;
-import io.saadmughal.assignment05.exception.ExportException;
+import com.practice.expensemngr.dto.*;
+import com.practice.expensemngr.exception.ExportException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.springframework.stereotype.Service;
@@ -13,48 +13,36 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
-/**
- * Service for generating CSV exports
- */
 @Service
 public class CsvExportService {
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     private static final SimpleDateFormat DATETIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-    /**
-     * Export transactions to CSV
-     * @param transactions List of transactions
-     * @return CSV content as byte array
-     */
     public byte[] exportTransactionsToCsv(List<TransactionExportDTO> transactions) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
 
-            // Define CSV format with headers
-            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                    .setHeader(
-                            "ID",
-                            "Date",
-                            "Type",
-                            "Account",
-                            "Category",
-                            "Amount",
-                            "Currency",
-                            "Description",
-                            "Reference Number",
-                            "Status",
-                            "Payment Method",
-                            "Merchant",
-                            "Tags",
-                            "Created At"
-                    )
-                    .build();
+            CSVFormat csvFormat = CSVFormat.DEFAULT.withHeader(
+                    "ID",
+                    "Date",
+                    "Type",
+                    "Account",
+                    "Category",
+                    "Amount",
+                    "Currency",
+                    "Description",
+                    "Reference Number",
+                    "Status",
+                    "Payment Method",
+                    "Merchant",
+                    "Tags",
+                    "Created At"
+            );
 
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
-            // Write data rows
             for (TransactionExportDTO transaction : transactions) {
                 csvPrinter.printRecord(
                         transaction.getId(),
@@ -86,29 +74,22 @@ public class CsvExportService {
         }
     }
 
-    /**
-     * Export accounts to CSV
-     * @param accounts List of accounts
-     * @return CSV content as byte array
-     */
     public byte[] exportAccountsToCsv(List<AccountExportDTO> accounts) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
 
-            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                    .setHeader(
-                            "ID",
-                            "Name",
-                            "Type",
-                            "Current Balance",
-                            "Initial Balance",
-                            "Currency",
-                            "Archived",
-                            "Created At",
-                            "Updated At"
-                    )
-                    .build();
+            CSVFormat csvFormat = CSVFormat.DEFAULT.withHeader(
+                    "ID",
+                    "Name",
+                    "Type",
+                    "Current Balance",
+                    "Initial Balance",
+                    "Currency",
+                    "Archived",
+                    "Created At",
+                    "Updated At"
+            );
 
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
@@ -138,38 +119,29 @@ public class CsvExportService {
         }
     }
 
-    /**
-     * Export budgets to CSV (flattened with items)
-     * @param budgets List of budgets
-     * @return CSV content as byte array
-     */
     public byte[] exportBudgetsToCsv(List<BudgetExportDTO> budgets) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
 
-            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                    .setHeader(
-                            "Budget ID",
-                            "Budget Name",
-                            "Period Type",
-                            "Start Date",
-                            "End Date",
-                            "Total Limit",
-                            "Notes",
-                            "Category",
-                            "Category Limit",
-                            "Warning Percent",
-                            "Created At"
-                    )
-                    .build();
+            CSVFormat csvFormat = CSVFormat.DEFAULT.withHeader(
+                    "Budget ID",
+                    "Budget Name",
+                    "Period Type",
+                    "Start Date",
+                    "End Date",
+                    "Total Limit",
+                    "Notes",
+                    "Category",
+                    "Category Limit",
+                    "Warning Percent",
+                    "Created At"
+            );
 
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
-            // Flatten budgets with their items
             for (BudgetExportDTO budget : budgets) {
                 if (budget.getItems() != null && !budget.getItems().isEmpty()) {
-                    // One row per budget item
                     for (BudgetItemExportDTO item : budget.getItems()) {
                         csvPrinter.printRecord(
                                 budget.getId(),
@@ -189,7 +161,6 @@ public class CsvExportService {
                         );
                     }
                 } else {
-                    // Budget without items
                     csvPrinter.printRecord(
                             budget.getId(),
                             budget.getName(),
@@ -219,30 +190,23 @@ public class CsvExportService {
         }
     }
 
-    /**
-     * Export categories to CSV
-     * @param categories List of categories
-     * @return CSV content as byte array
-     */
     public byte[] exportCategoriesToCsv(List<CategoryExportDTO> categories) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
 
-            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                    .setHeader(
-                            "ID",
-                            "Name",
-                            "Type",
-                            "Icon",
-                            "Color",
-                            "Sort Order",
-                            "Archived",
-                            "Parent Category",
-                            "Created At",
-                            "Updated At"
-                    )
-                    .build();
+            CSVFormat csvFormat = CSVFormat.DEFAULT.withHeader(
+                    "ID",
+                    "Name",
+                    "Type",
+                    "Icon",
+                    "Color",
+                    "Sort Order",
+                    "Archived",
+                    "Parent Category",
+                    "Created At",
+                    "Updated At"
+            );
 
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 

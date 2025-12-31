@@ -74,7 +74,7 @@ public class ReportService {
         Map<String, BigDecimal> byCategory = monthTxns.stream()
                 .filter(t -> "EXPENSE".equalsIgnoreCase(t.getType()))
                 .collect(Collectors.groupingBy(
-                        Transactions::getCategory,
+                        t -> t.getCategory().getName(),
                         Collectors.reducing(BigDecimal.ZERO, Transactions::getAmount, BigDecimal::add)
                 ));
 

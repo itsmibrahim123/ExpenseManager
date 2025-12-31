@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.exception;
+package com.practice.expensemngr.exception;
 
 public class CategoryNotFoundException extends RuntimeException {
     public CategoryNotFoundException(Long categoryId) {

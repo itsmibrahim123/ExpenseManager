@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.CategoriesDTO;
-import io.saadmughal.assignment05.entity.Categories;
-import io.saadmughal.assignment05.repository.CategoriesRepository;
-import io.saadmughal.assignment05.vo.CategoriesQueryVO;
-import io.saadmughal.assignment05.vo.CategoriesUpdateVO;
-import io.saadmughal.assignment05.vo.CategoriesVO;
+import com.practice.expensemngr.dto.CategoriesDTO;
+import com.practice.expensemngr.entity.Categories;
+import com.practice.expensemngr.repository.CategoriesRepository;
+import com.practice.expensemngr.vo.CategoriesQueryVO;
+import com.practice.expensemngr.vo.CategoriesUpdateVO;
+import com.practice.expensemngr.vo.CategoriesVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

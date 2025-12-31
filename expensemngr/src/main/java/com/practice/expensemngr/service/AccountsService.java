@@ -1,14 +1,14 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.AccountCreateRequestDTO;
-import io.saadmughal.assignment05.dto.AccountResponseDTO;
-import io.saadmughal.assignment05.dto.AccountUpdateRequestDTO;
-import io.saadmughal.assignment05.entity.Accounts;
-import io.saadmughal.assignment05.exception.AccountHasBalanceException;
-import io.saadmughal.assignment05.exception.AccountHasTransactionsException;
-import io.saadmughal.assignment05.exception.AccountNotFoundException;
-import io.saadmughal.assignment05.repository.AccountsRepository;
-import io.saadmughal.assignment05.repository.TransactionsRepository;
+import com.practice.expensemngr.dto.AccountCreateRequestDTO;
+import com.practice.expensemngr.dto.AccountResponseDTO;
+import com.practice.expensemngr.dto.AccountUpdateRequestDTO;
+import com.practice.expensemngr.entity.Accounts;
+import com.practice.expensemngr.exception.AccountHasBalanceException;
+import com.practice.expensemngr.exception.AccountHasTransactionsException;
+import com.practice.expensemngr.exception.AccountNotFoundException;
+import com.practice.expensemngr.repository.AccountsRepository;
+import com.practice.expensemngr.repository.TransactionsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

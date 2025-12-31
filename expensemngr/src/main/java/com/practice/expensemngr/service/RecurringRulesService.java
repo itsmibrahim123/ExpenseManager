@@ -1,12 +1,12 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.RecurringRuleCreateRequestDTO;
-import io.saadmughal.assignment05.dto.RecurringRuleResponseDTO;
-import io.saadmughal.assignment05.dto.RecurringRuleUpdateRequestDTO;
-import io.saadmughal.assignment05.entity.*;
-import io.saadmughal.assignment05.exception.*;
-import io.saadmughal.assignment05.repository.*;
-import io.saadmughal.assignment05.util.RecurringDateCalculator;
+import com.practice.expensemngr.dto.RecurringRuleCreateRequestDTO;
+import com.practice.expensemngr.dto.RecurringRuleResponseDTO;
+import com.practice.expensemngr.dto.RecurringRuleUpdateRequestDTO;
+import com.practice.expensemngr.entity.*;
+import com.practice.expensemngr.exception.*;
+import com.practice.expensemngr.repository.*;
+import com.practice.expensemngr.util.RecurringDateCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

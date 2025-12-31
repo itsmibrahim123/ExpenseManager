@@ -1,28 +1,24 @@
-package io.saadmughal.assignment05.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+package com.practice.expensemngr.entity;
 
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * Composite key for TransactionTags entity
- */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class TransactionTagsId implements Serializable {
-    private static final long serialVersionUID = 1L;
-
     private Long transactionId;
     private Long tagId;
+
+    public TransactionTagsId() {}
+
+    public TransactionTagsId(Long transactionId, Long tagId) {
+        this.transactionId = transactionId;
+        this.tagId = tagId;
+    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (!(o instanceof TransactionTagsId)) return false;
         TransactionTagsId that = (TransactionTagsId) o;
         return Objects.equals(transactionId, that.transactionId) &&
                 Objects.equals(tagId, that.tagId);

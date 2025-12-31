@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.security;
+package com.practice.expensemngr.security;
 
 public class JwtAuthenticationFilter {
 }

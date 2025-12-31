@@ -1,8 +1,8 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.*;
-import io.saadmughal.assignment05.entity.*;
-import io.saadmughal.assignment05.repository.*;
+import com.practice.expensemngr.dto.*;
+import com.practice.expensemngr.entity.*;
+import com.practice.expensemngr.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

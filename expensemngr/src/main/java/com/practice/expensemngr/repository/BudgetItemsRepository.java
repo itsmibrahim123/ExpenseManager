@@ -1,6 +1,6 @@
-package io.saadmughal.assignment05.repository;
+package com.practice.expensemngr.repository;
 
-import io.saadmughal.assignment05.entity.BudgetItems;
+import com.practice.expensemngr.entity.BudgetItems;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 

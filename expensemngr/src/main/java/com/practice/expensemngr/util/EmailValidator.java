@@ -1,6 +1,6 @@
-package io.saadmughal.assignment05.util;
+package com.practice.expensemngr.util;
 
-import io.saadmughal.assignment05.exception.InvalidEmailFormatException;
+import com.practice.expensemngr.exception.InvalidEmailFormatException;
 
 import java.util.regex.Pattern;
 

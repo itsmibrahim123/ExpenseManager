@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.dto;
+package com.practice.expensemngr.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
-/**
- * Response object returned after successful login
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,6 +15,7 @@ public class LoginResponseDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String token;
+    @Builder.Default
     private String tokenType = "Bearer";
     private Long userId;
     private String fullName;

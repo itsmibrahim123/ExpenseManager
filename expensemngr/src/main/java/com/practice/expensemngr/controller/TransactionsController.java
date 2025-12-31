@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.controller;
+package com.practice.expensemngr.controller;
 
 import com.practice.expensemngr.dto.TransactionCreateRequestDTO;
 import com.practice.expensemngr.dto.TransactionResponseDTO;

@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.exception;
+package com.practice.expensemngr.exception;
 
 import java.math.BigDecimal;
 

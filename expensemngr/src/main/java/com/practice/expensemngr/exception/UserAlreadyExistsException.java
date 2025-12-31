@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.exception;
+package com.practice.expensemngr.exception;
 
 /**
  * Exception thrown when attempting to register a user with an email that already exists

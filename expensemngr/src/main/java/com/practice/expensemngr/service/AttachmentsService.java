@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.AttachmentsDTO;
-import io.saadmughal.assignment05.entity.Attachments;
-import io.saadmughal.assignment05.repository.AttachmentsRepository;
-import io.saadmughal.assignment05.vo.AttachmentsQueryVO;
-import io.saadmughal.assignment05.vo.AttachmentsUpdateVO;
-import io.saadmughal.assignment05.vo.AttachmentsVO;
+import com.practice.expensemngr.dto.AttachmentsDTO;
+import com.practice.expensemngr.entity.Attachments;
+import com.practice.expensemngr.repository.AttachmentsRepository;
+import com.practice.expensemngr.vo.AttachmentsQueryVO;
+import com.practice.expensemngr.vo.AttachmentsUpdateVO;
+import com.practice.expensemngr.vo.AttachmentsVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

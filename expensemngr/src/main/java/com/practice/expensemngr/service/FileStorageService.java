@@ -1,7 +1,7 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.config.FileStorageProperties;
-import io.saadmughal.assignment05.exception.FileUploadException;
+import com.practice.expensemngr.config.FileStorageProperties;
+import com.practice.expensemngr.exception.FileUploadException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;

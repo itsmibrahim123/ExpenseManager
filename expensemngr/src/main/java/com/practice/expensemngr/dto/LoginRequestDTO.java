@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.dto;
+package com.practice.expensemngr.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.MerchantsDTO;
-import io.saadmughal.assignment05.entity.Merchants;
-import io.saadmughal.assignment05.repository.MerchantsRepository;
-import io.saadmughal.assignment05.vo.MerchantsQueryVO;
-import io.saadmughal.assignment05.vo.MerchantsUpdateVO;
-import io.saadmughal.assignment05.vo.MerchantsVO;
+import com.practice.expensemngr.dto.MerchantsDTO;
+import com.practice.expensemngr.entity.Merchants;
+import com.practice.expensemngr.repository.MerchantsRepository;
+import com.practice.expensemngr.vo.MerchantsQueryVO;
+import com.practice.expensemngr.vo.MerchantsUpdateVO;
+import com.practice.expensemngr.vo.MerchantsVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

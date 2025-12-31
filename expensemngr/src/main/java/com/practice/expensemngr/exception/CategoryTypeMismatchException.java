@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.exception;
+package com.practice.expensemngr.exception;
 
 /**
  * Exception thrown when category type doesn't match transaction type

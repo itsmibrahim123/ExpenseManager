@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.entity;
+package com.practice.expensemngr.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

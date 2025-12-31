@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.exception;
+package com.practice.expensemngr.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

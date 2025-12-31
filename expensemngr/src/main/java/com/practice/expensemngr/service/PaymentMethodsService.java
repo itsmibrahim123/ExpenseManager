@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.PaymentMethodsDTO;
-import io.saadmughal.assignment05.entity.PaymentMethods;
-import io.saadmughal.assignment05.repository.PaymentMethodsRepository;
-import io.saadmughal.assignment05.vo.PaymentMethodsQueryVO;
-import io.saadmughal.assignment05.vo.PaymentMethodsUpdateVO;
-import io.saadmughal.assignment05.vo.PaymentMethodsVO;
+import com.practice.expensemngr.dto.PaymentMethodsDTO;
+import com.practice.expensemngr.entity.PaymentMethods;
+import com.practice.expensemngr.repository.PaymentMethodsRepository;
+import com.practice.expensemngr.vo.PaymentMethodsQueryVO;
+import com.practice.expensemngr.vo.PaymentMethodsUpdateVO;
+import com.practice.expensemngr.vo.PaymentMethodsVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

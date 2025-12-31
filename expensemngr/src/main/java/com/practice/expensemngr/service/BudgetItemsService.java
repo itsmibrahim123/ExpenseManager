@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.BudgetItemsDTO;
-import io.saadmughal.assignment05.entity.BudgetItems;
-import io.saadmughal.assignment05.repository.BudgetItemsRepository;
-import io.saadmughal.assignment05.vo.BudgetItemsQueryVO;
-import io.saadmughal.assignment05.vo.BudgetItemsUpdateVO;
-import io.saadmughal.assignment05.vo.BudgetItemsVO;
+import com.practice.expensemngr.dto.BudgetItemsDTO;
+import com.practice.expensemngr.entity.BudgetItems;
+import com.practice.expensemngr.repository.BudgetItemsRepository;
+import com.practice.expensemngr.vo.BudgetItemsQueryVO;
+import com.practice.expensemngr.vo.BudgetItemsUpdateVO;
+import com.practice.expensemngr.vo.BudgetItemsVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.dto;
+package com.practice.expensemngr.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;

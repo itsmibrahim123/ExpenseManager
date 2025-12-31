@@ -1,6 +1,6 @@
-package io.saadmughal.assignment05.util;
+package com.practice.expensemngr.util;
 
-import io.saadmughal.assignment05.exception.WeakPasswordException;
+import com.practice.expensemngr.exception.WeakPasswordException;
 
 /**
  * Utility class for password validation

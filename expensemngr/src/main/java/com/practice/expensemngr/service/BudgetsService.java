@@ -1,20 +1,20 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.*;
-import io.saadmughal.assignment05.entity.BudgetItems;
-import io.saadmughal.assignment05.entity.Budgets;
-import io.saadmughal.assignment05.entity.Categories;
-import io.saadmughal.assignment05.exception.BudgetItemNotFoundException;
-import io.saadmughal.assignment05.exception.BudgetNotFoundException;
-import io.saadmughal.assignment05.exception.InvalidDateRangeException;
-import io.saadmughal.assignment05.exception.InvalidPeriodTypeException;
-import io.saadmughal.assignment05.repository.BudgetItemsRepository;
-import io.saadmughal.assignment05.repository.BudgetsRepository;
-import io.saadmughal.assignment05.repository.CategoriesRepository;
+import com.practice.expensemngr.dto.*;
+import com.practice.expensemngr.entity.BudgetItems;
+import com.practice.expensemngr.entity.Budgets;
+import com.practice.expensemngr.entity.Categories;
+import com.practice.expensemngr.exception.BudgetItemNotFoundException;
+import com.practice.expensemngr.exception.BudgetNotFoundException;
+import com.practice.expensemngr.exception.InvalidDateRangeException;
+import com.practice.expensemngr.exception.InvalidPeriodTypeException;
+import com.practice.expensemngr.repository.BudgetItemsRepository;
+import com.practice.expensemngr.repository.BudgetsRepository;
+import com.practice.expensemngr.repository.CategoriesRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import io.saadmughal.assignment05.exception.CategoryNotFoundException;
+import com.practice.expensemngr.exception.CategoryNotFoundException;
 
 import java.math.BigDecimal;
 import java.util.*;

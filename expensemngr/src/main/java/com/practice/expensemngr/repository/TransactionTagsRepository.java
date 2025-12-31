@@ -1,7 +1,7 @@
-package io.saadmughal.assignment05.repository;
+package com.practice.expensemngr.repository;
 
-import io.saadmughal.assignment05.entity.TransactionTags;
-import io.saadmughal.assignment05.entity.TransactionTagsId;
+import com.practice.expensemngr.entity.TransactionTags;
+import com.practice.expensemngr.entity.TransactionTagsId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 

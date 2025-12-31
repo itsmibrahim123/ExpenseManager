@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-// ... imports ...
 import com.practice.expensemngr.dto.AuthRequest;
 import com.practice.expensemngr.dto.AuthResponse;
 

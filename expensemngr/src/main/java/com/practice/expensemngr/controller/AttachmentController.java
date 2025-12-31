@@ -1,9 +1,9 @@
-package io.saadmughal.assignment05.controller;
+package com.practice.expensemngr.controller;
 
-com.practice.expensemngr.dto.AttachmentDTO;
-com.practice.expensemngr.dto.AttachmentUploadResponseDTO;
-com.practice.expensemngr.entity.Attachments;
-com.practice.expensemngr.service.AttachmentService;
+import com.practice.expensemngr.dto.AttachmentDTO;
+import com.practice.expensemngr.dto.AttachmentUploadResponseDTO;
+import com.practice.expensemngr.entity.Attachments;
+import com.practice.expensemngr.service.AttachmentService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;

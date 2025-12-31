@@ -1,22 +1,22 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.TransactionCreateRequestDTO;
-import io.saadmughal.assignment05.dto.TransactionResponseDTO;
-import io.saadmughal.assignment05.entity.Accounts;
-import io.saadmughal.assignment05.entity.Categories;
-import io.saadmughal.assignment05.entity.Transactions;
-import io.saadmughal.assignment05.exception.*;
-import io.saadmughal.assignment05.repository.AccountsRepository;
-import io.saadmughal.assignment05.repository.CategoriesRepository;
-import io.saadmughal.assignment05.repository.TransactionsRepository;
+import com.practice.expensemngr.dto.TransactionCreateRequestDTO;
+import com.practice.expensemngr.dto.TransactionResponseDTO;
+import com.practice.expensemngr.entity.Accounts;
+import com.practice.expensemngr.entity.Categories;
+import com.practice.expensemngr.entity.Transactions;
+import com.practice.expensemngr.exception.*;
+import com.practice.expensemngr.repository.AccountsRepository;
+import com.practice.expensemngr.repository.CategoriesRepository;
+import com.practice.expensemngr.repository.TransactionsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import io.saadmughal.assignment05.dto.TransferRequestDTO;
-import io.saadmughal.assignment05.dto.TransferResponseDTO;
-import io.saadmughal.assignment05.exception.ArchivedAccountException;
-import io.saadmughal.assignment05.exception.CurrencyMismatchException;
-import io.saadmughal.assignment05.exception.SameAccountTransferException;
+import com.practice.expensemngr.dto.TransferRequestDTO;
+import com.practice.expensemngr.dto.TransferResponseDTO;
+import com.practice.expensemngr.exception.ArchivedAccountException;
+import com.practice.expensemngr.exception.CurrencyMismatchException;
+import com.practice.expensemngr.exception.SameAccountTransferException;
 
 import java.math.BigDecimal;
 import java.sql.Time;

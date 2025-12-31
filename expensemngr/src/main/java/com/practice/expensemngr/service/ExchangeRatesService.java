@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.ExchangeRatesDTO;
-import io.saadmughal.assignment05.entity.ExchangeRates;
-import io.saadmughal.assignment05.repository.ExchangeRatesRepository;
-import io.saadmughal.assignment05.vo.ExchangeRatesQueryVO;
-import io.saadmughal.assignment05.vo.ExchangeRatesUpdateVO;
-import io.saadmughal.assignment05.vo.ExchangeRatesVO;
+import com.practice.expensemngr.dto.ExchangeRatesDTO;
+import com.practice.expensemngr.entity.ExchangeRates;
+import com.practice.expensemngr.repository.ExchangeRatesRepository;
+import com.practice.expensemngr.vo.ExchangeRatesQueryVO;
+import com.practice.expensemngr.vo.ExchangeRatesUpdateVO;
+import com.practice.expensemngr.vo.ExchangeRatesVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

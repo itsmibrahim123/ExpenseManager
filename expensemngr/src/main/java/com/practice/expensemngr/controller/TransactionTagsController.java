@@ -34,20 +34,20 @@ public class TransactionTagsController {
         return transactionTagsService.save(vO).toString();
     }
 
-    @DeleteMapping("/{id}")
-    public void delete(@Valid @NotNull @PathVariable("id") Long id) {
-        transactionTagsService.delete(id);
+    @DeleteMapping("/{transactionId}/{tagId}")
+    public void delete(@PathVariable("transactionId") Long transactionId, @PathVariable("tagId") Long tagId) {
+        transactionTagsService.delete(transactionId, tagId);
     }
 
-    @PutMapping("/{id}")
-    public void update(@Valid @NotNull @PathVariable("id") Long id,
+    @PutMapping("/{transactionId}/{tagId}")
+    public void update(@PathVariable("transactionId") Long transactionId, @PathVariable("tagId") Long tagId,
                        @Valid @RequestBody TransactionTagsUpdateVO vO) {
-        transactionTagsService.update(id, vO);
+        transactionTagsService.update(transactionId, tagId, vO);
     }
 
-    @GetMapping("/{id}")
-    public TransactionTagsDTO getById(@Valid @NotNull @PathVariable("id") Long id) {
-        return transactionTagsService.getById(id);
+    @GetMapping("/{transactionId}/{tagId}")
+    public TransactionTagsDTO getById(@PathVariable("transactionId") Long transactionId, @PathVariable("tagId") Long tagId) {
+        return transactionTagsService.getById(transactionId, tagId);
     }
 
     @GetMapping

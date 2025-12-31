@@ -1,4 +1,4 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
 /**
  * Service interface for sending notifications

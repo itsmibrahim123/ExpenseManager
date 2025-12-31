@@ -1,11 +1,11 @@
-package io.saadmughal.assignment05.service;
+package com.practice.expensemngr.service;
 
-import io.saadmughal.assignment05.dto.AuditLogsDTO;
-import io.saadmughal.assignment05.entity.AuditLogs;
-import io.saadmughal.assignment05.repository.AuditLogsRepository;
-import io.saadmughal.assignment05.vo.AuditLogsQueryVO;
-import io.saadmughal.assignment05.vo.AuditLogsUpdateVO;
-import io.saadmughal.assignment05.vo.AuditLogsVO;
+import com.practice.expensemngr.dto.AuditLogsDTO;
+import com.practice.expensemngr.entity.AuditLogs;
+import com.practice.expensemngr.repository.AuditLogsRepository;
+import com.practice.expensemngr.vo.AuditLogsQueryVO;
+import com.practice.expensemngr.vo.AuditLogsUpdateVO;
+import com.practice.expensemngr.vo.AuditLogsVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
