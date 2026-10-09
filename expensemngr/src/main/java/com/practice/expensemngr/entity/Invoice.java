@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
@@ -20,7 +19,7 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "invoices")
-public class Invoice implements Serializable {
+public class Invoice extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -29,7 +28,7 @@ public class Invoice implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "invoice_number", nullable = false, unique = true)
+    @Column(name = "invoice_number", nullable = false)
     private String invoiceNumber;
 
     @Column(name = "customer_id")
@@ -80,6 +79,7 @@ public class Invoice implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        super.autoAssignTenant();
         this.createdAt = new Date();
         if (this.invoiceDate == null) this.invoiceDate = new Date();
         if (this.subtotal == null) this.subtotal = BigDecimal.ZERO;

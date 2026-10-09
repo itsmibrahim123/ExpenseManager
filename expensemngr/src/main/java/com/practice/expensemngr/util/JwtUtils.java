@@ -12,16 +12,26 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Component
 public class JwtUtils {
 
     private static final String SECRET_KEY = "YourSuperSecretKeyThatShouldBeVeryLongAndComplexForSecurity";
-    private static final long EXPIRATION_TIME = 86400000;
+    private static final long EXPIRATION_TIME = 86400000; // 24 hours
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public UUID extractTenantId(String token) {
+        String tenantIdStr = extractClaim(token, claims -> claims.get("tenantId", String.class));
+        return tenantIdStr != null ? UUID.fromString(tenantIdStr) : null;
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -29,8 +39,15 @@ public class JwtUtils {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+    public String generateToken(UserDetails userDetails, UUID tenantId, String role) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        if (tenantId != null) {
+            extraClaims.put("tenantId", tenantId.toString());
+        }
+        if (role != null) {
+            extraClaims.put("role", role);
+        }
+        return generateToken(extraClaims, userDetails);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
@@ -66,7 +83,6 @@ public class JwtUtils {
 
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
-
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 }

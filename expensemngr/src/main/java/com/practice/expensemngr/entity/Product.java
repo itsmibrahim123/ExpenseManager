@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -18,7 +17,7 @@ import java.util.Date;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "products")
-public class Product implements Serializable {
+public class Product extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -27,7 +26,7 @@ public class Product implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "sku", nullable = false, unique = true)
+    @Column(name = "sku", nullable = false)
     private String sku;
 
     @Column(name = "barcode")
@@ -72,6 +71,7 @@ public class Product implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        super.autoAssignTenant();
         this.createdAt = new Date();
         this.updatedAt = new Date();
         if (this.active == null) this.active = true;

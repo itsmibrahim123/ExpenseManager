@@ -8,7 +8,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Entity
@@ -18,7 +17,7 @@ import java.math.BigDecimal;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "invoice_items")
-public class InvoiceItem implements Serializable {
+public class InvoiceItem extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -59,4 +58,9 @@ public class InvoiceItem implements Serializable {
 
     @Column(name = "line_total", nullable = false)
     private BigDecimal lineTotal;
+
+    @PrePersist
+    protected void onCreate() {
+        super.autoAssignTenant();
+    }
 }

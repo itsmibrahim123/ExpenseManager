@@ -3,22 +3,18 @@ package com.practice.expensemngr.repository;
 import com.practice.expensemngr.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
+@Repository
 public interface UsersRepository extends JpaRepository<Users, Long>, JpaSpecificationExecutor<Users> {
 
-    /**
-     * Check if a user exists with the given email
-     * @param email the email to check
-     * @return true if user exists, false otherwise
-     */
     boolean existsByEmail(String email);
 
-    /**
-     * Find a user by email
-     * @param email the email to search for
-     * @return Optional containing the user if found
-     */
     Optional<Users> findByEmail(String email);
+
+    List<Users> findByTenantId(UUID tenantId);
 }

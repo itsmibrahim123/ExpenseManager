@@ -1,8 +1,8 @@
-# ExpenseManager - Project Context & Documentation
+# ExpenseManager - SaaS Multi-Tenant ERP Documentation
 
 ## Overview
 
-**ExpenseManager ERP** is an integrated full-stack personal & business finance, billing, inventory, and expense management platform. It combines core financial ledger features with a Point-of-Sale (POS) terminal, inventory stock tracking, customer accounts, thermal receipt printing, and daily register session closure (Z-Report statements).
+**ExpenseManager ERP** is an enterprise-grade multi-tenant Software-as-a-Service (SaaS) platform for personal and retail store business management. It enables Super Admins to provision, manage, and monitor tenant stores while ensuring complete data isolation, role-based authorization, and dynamic store branding across POS billing, receipts, inventory, and accounting registers.
 
 ---
 
@@ -10,131 +10,103 @@
 
 ```
 ExpenseManager/
-├── expensemngr/              # Java / Spring Boot Backend API
+├── expensemngr/              # Java 17 / Spring Boot 3 Multi-Tenant Backend API
 │   ├── src/main/java/com/practice/expensemngr/
-│   │   ├── config/           # Application, Security & DataSeeder configuration
-│   │   ├── controller/       # REST API Endpoints (27 controllers including POS, Stock & Register)
-│   │   ├── dto/              # Data Transfer Objects
-│   │   ├── entity/           # JPA Domain Entities (Product, StockMovement, Customer, Invoice, InvoiceItem, DailyRegisterSession, etc.)
-│   │   ├── repository/       # Data Access Repositories
-│   │   ├── security/         # JWT Auth & Security filters
-│   │   ├── service/          # Business logic & transactional services (InventoryService, InvoiceService, DailyRegisterService, etc.)
-│   │   └── util/             # Utility classes (file storage, export, etc.)
-│   ├── FRONTEND_CONTEXT.md   # API & Dashboard specification reference
+│   │   ├── config/           # Security, TenantContext, TenantSecurityFilter & SubscriptionInterceptor
+│   │   ├── controller/       # REST Endpoints (SuperAdminController, POS, Inventory, Register, etc.)
+│   │   ├── dto/              # Data Transfer Objects (TenantOnboardingDTO, PlatformMetricsDTO, etc.)
+│   │   ├── entity/           # JPA Entities (Tenant, TenantSettings, BaseTenantEntity, Users, Product, etc.)
+│   │   ├── repository/       # Multi-tenant Spring Data Repositories
+│   │   ├── security/         # JWT Authentication & Role-Based Authorization
+│   │   ├── service/          # Service Layer (TenantProvisioningService, InventoryService, InvoiceService)
+│   │   └── util/             # JwtUtils with embedded tenantId and role claims
 │   └── pom.xml               # Maven configuration
 │
-└── frontend/                 # React Single Page Application (SPA)
+└── frontend/                 # React 19 + MUI v7 Multi-Tenant SPA
     ├── src/
-    │   ├── api/              # Axios API service calls (inventoryApi, invoiceApi, customerApi, registerApi)
-    │   ├── components/       # Reusable UI components & Print Engine (ThermalReceipt, DailyAccountStatement)
-    │   ├── context/          # React Context (Auth, Theme)
-    │   ├── pages/            # Page Views (POSBilling, Inventory, Invoices, DailyRegister, Dashboard, etc.)
+    │   ├── api/              # Axios API calls (adminApi, inventoryApi, invoiceApi, registerApi)
+    │   ├── components/       # UI Components & Print Engine (ThermalReceipt, DailyAccountStatement, SuperAdminRoute)
+    │   ├── context/          # AuthContext (Role & Tenant) + TenantContext (Store Branding)
+    │   ├── pages/            # Page Views
+    │   │   ├── admin/        # Super Admin Portal (AdminDashboard, AdminStores)
+    │   │   └── ...           # Tenant Store Operations (POSBilling, Inventory, Invoices, DailyRegister)
     │   └── theme/            # MUI Theme configuration
     └── package.json          # Node dependencies & scripts
 ```
 
 ---
 
-## Tech Stack
+## Multi-Tenant Architecture & Isolation Engine
+
+### 1. Domain Entities & Superclass
+- **`Tenant`**: Stores UUID, store name, unique URL slug, owner email/phone, currency, status (`TRIAL`, `ACTIVE`, `SUSPENDED`, `CANCELLED`), plan tier (`STARTER`, `PROFESSIONAL`, `ENTERPRISE`), and expiration timestamp.
+- **`TenantSettings`**: Stores tax registration numbers, default tax rates, custom receipt headers, footers, logo URLs, and negative stock policy flags.
+- **`BaseTenantEntity`**: `@MappedSuperclass` extended by all store entities (`Product`, `StockMovement`, `Customer`, `Invoice`, `InvoiceItem`, `DailyRegisterSession`, `Accounts`, `Transactions`, `Categories`, `Budgets`). Features an `@PrePersist` listener for auto-populating `tenantId` from `TenantContext`.
+
+### 2. Thread-Local Tenant Context & Filters
+- **`TenantContext`**: Manages `ThreadLocal<UUID> currentTenant` per thread.
+- **`TenantSecurityFilter`**: Placed after JWT authentication filter to parse `tenantId` and `role` claims from tokens. Supports Super Admin impersonation via `X-Tenant-Id` header.
+- **`TenantSubscriptionInterceptor`**: Intercepts requests for store users. If store status is `SUSPENDED`, `CANCELLED`, or expired, blocks execution with `403 Forbidden` (`{"error": "TENANT_ACCOUNT_INACTIVE"}`).
+
+---
+
+## Super Admin Portal & Onboarding Workflow
+
+### Super Admin Endpoints (`/admin/**`)
+- `POST /admin/tenants`: Provisions a new store tenant, creates `TenantSettings`, registers owner user (`ROLE_STORE_ADMIN`), and seeds baseline cash drawers, bank accounts, walk-in customer, and standard expense categories atomically.
+- `GET /admin/tenants`: Paginated list of store tenants filtered by status, plan tier, or search query.
+- `PUT /admin/tenants/{id}/status`: Toggle store status (`ACTIVE` vs `SUSPENDED`).
+- `PUT /admin/tenants/{id}/subscription`: Extend expiration dates and update subscription tiers.
+- `GET /admin/metrics`: Platform aggregated KPIs (Total Stores, Active vs Suspended, 30-Day POS Volume, New Store Onboardings).
+
+---
+
+## Role-Based Access Control (RBAC)
+
+- **`ROLE_SUPER_ADMIN`**: Full platform control, access to `/admin/**` portal, impersonation rights via `X-Tenant-Id`.
+- **`ROLE_STORE_ADMIN`**: Store-level administrative access to POS, inventory, billing, accounts, and daily register closures.
+- **`ROLE_CASHIER`**: POS checkout and invoice generation.
+- **`ROLE_INVENTORY_MANAGER`**: Product catalog and stock restock management.
+
+---
+
+## Frontend Multi-Tenant Store Branding
+
+- **`AuthContext`**: Stores JWT, user role, `tenantId`, `storeName`, and `tenantSettings`.
+- **`TenantContext`**: Exposes `useTenant()` hook providing localized store headers, footers, logo URLs, and tax numbers.
+- **`ThermalReceipt.jsx` & `DailyAccountStatement.jsx`**: Dynamically render tenant-specific receipt headers, tax IDs, and custom footers during 80mm thermal and A4 print executions.
+
+---
+
+## Default Seeded Credentials
+
+1. **Super Admin Platform Login**:
+   - **Email:** `admin@saas.com`
+   - **Password:** `admin123`
+   - **Role:** `ROLE_SUPER_ADMIN`
+   - **Portal Route:** `/admin/dashboard`
+
+2. **Default Store Tenant Login**:
+   - **Store Name:** Main Retail Store (slug: `main-store`)
+   - **Email:** `guest@example.com`
+   - **Password:** `guest123`
+   - **Role:** `ROLE_STORE_ADMIN`
+   - **Store Operations Route:** `/pos`, `/inventory`, `/register`
+
+---
+
+## Running Locally
 
 ### Backend (`expensemngr`)
-- **Language & Framework:** Java 17+, Spring Boot 3
-- **Security:** Spring Security + JWT (JSON Web Tokens) + BCrypt
-- **Persistence:** Spring Data JPA / Hibernate (SQL database compatible)
-- **Build Tool:** Maven (`pom.xml`)
-- **Key Modules:** Spring Web, Spring Security, Spring Data JPA, Transactional Management, File Upload, CSV Export
-
-### Frontend (`frontend`)
-- **Framework:** React 19 + React Router v7
-- **UI Library:** Material-UI (MUI v7), `@emotion/react`, `@emotion/styled`
-- **Print Engine:** CSS `@media print` + Thermal Receipt (80mm/58mm) & A4 Z-Report Financial Statements
-- **Charts & Visualization:** Chart.js + `react-chartjs-2`
-- **Form Management:** `react-hook-form`
-- **HTTP Client:** `axios`
-- **Date Handling:** `date-fns`
-
----
-
-## Core Domain Features
-
-### 1. Point-of-Sale (POS) Terminal & Billing (`/pos`)
-- **Fast Checkout Interface:** Barcode scanner input and fast search by name or SKU.
-- **Cart Management:** Line item quantity controls, discount adjustments, unit price overrides.
-- **Customer Assignment:** Link invoices to customer ledgers or default to Walk-in Customer.
-- **Multi-Channel Payments:** Process transactions via Cash, Debit/Credit Card, Bank Transfer, or Customer Credit.
-- **Automated Ledger Credit:** Checkout atomically deducts product stock, records stock movements, and credits the target bank/cash ledger account with income (`Transactions`).
-- **Thermal Receipt Printing:** Instant 80mm/58mm thermal paper receipt preview and print trigger.
-
-### 2. Product Catalog & Inventory Management (`/inventory`)
-- **Stock Tracking:** Track current stock, SKU codes, barcodes, cost prices (buying), selling prices (retail), and reorder warning levels.
-- **Status Badges:** Real-time stock status (`In Stock`, `Low Stock Alert`, `Out of Stock`).
-- **Automated Expense Restocking:** Restocking inventory automatically generates an `EXPENSE` transaction in the financial ledger against the selected payment account.
-
-### 3. Sales Invoices & Billing History (`/invoices`)
-- **Historic Invoice Table:** Filter invoices by payment status (`PAID`, `PARTIALLY_PAID`, `UNPAID`) and date range.
-- **Reprint Receipts:** View line item details and reprint thermal receipts at any time.
-
-### 4. Daily Register & Financial Reconciliation (`/register`)
-- **Session Management:** Open daily session with initial cash float; close session with counted cash drawer balance.
-- **Variance Calculation:** Automatically calculates expected cash (`Opening Float + Cash Sales - Cash Expenses`) vs. actual counted cash, highlighting overage or shortage.
-- **Printable Z-Report Statement:** Print-ready A4 Daily Account Statement with channel breakdown, cash float reconciliation, and manager sign-off lines.
-
-### 5. Multi-Account & Multi-Currency Management (`/accounts`)
-- **Account Ledger:** Manage Cash Drawers, Bank Accounts, Credit Cards, and Wallets in multiple currencies.
-
-### 6. Budgets, Analytics & Data Export (`/budgets`, `/reports`)
-- **Financial Analytics:** Overview dashboards, category spending pie charts, and downloadable CSV exports.
-
----
-
-## API Controller Mapping
-
-| Controller | Base Path | Key Capabilities |
-| :--- | :--- | :--- |
-| `ProductController` | `/products` | Product catalog CRUD, search, low-stock query, and restocking |
-| `StockController` | `/stock` | Stock adjustments and stock movement audit trail |
-| `CustomerController` | `/customers` | Customer catalog and credit balance tracking |
-| `InvoiceController` | `/invoices` | POS invoice creation, filtering, and detail lookups |
-| `RegisterController` | `/register` | Register session open/close, active status, and daily Z-report summary |
-| `AuthController` | `/auth` | User registration & JWT authentication |
-| `AccountsController` | `/accounts` | CRUD operations for bank/cash accounts |
-| `TransactionsController` | `/transactions` | Income/Expense logging, transfers |
-| `TransactionSearchController` | `/transactions/search` | Advanced filtering and query search |
-| `AttachmentsController` | `/attachments` | Receipt image/file upload and retrieval |
-| `BudgetsController` | `/budgets` | Budget creation and status monitoring |
-| `RecurringRulesController` | `/recurring` | Automated recurring transaction setup |
-| `DashboardController` | `/dashboard` | Main dashboard summary & chart data |
-| `ReportController` | `/reports` | Financial analysis reporting |
-| `ExportController` | `/export` | CSV transaction export |
-| `CurrenciesController` | `/currencies` | Currency definitions |
-| `ExchangeRatesController` | `/exchange-rates` | Multi-currency conversion rates |
-| `CategoriesController` | `/categories` | Expense and income categories |
-| `TagsController` | `/tags` | Custom transaction tagging |
-| `MerchantsController` | `/merchants` | Merchant cataloging |
-| `PaymentMethodsController` | `/payment-methods` | Credit card / payment method management |
-| `NotificationPreferencesController` | `/notifications` | Alert rules and preference settings |
-| `AuditLogsController` | `/audit-logs` | System activity and audit trail |
-
----
-
-## Getting Started / Running Locally
-
-### Backend Setup (`expensemngr`)
-
 ```bash
 cd expensemngr
 chmod +x ./mvnw
 ./mvnw spring-boot:run
 ```
 
-*(Runs on default port `8080`)*
-
-### Frontend Setup (`frontend`)
-
+### Frontend (`frontend`)
 ```bash
 cd frontend
 npm install
 npm start
 ```
-
-*(Runs on `http://localhost:3000`)*

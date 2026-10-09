@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Time;
 import java.util.Date;
@@ -19,7 +18,7 @@ import java.util.Date;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "transactions")
-public class Transactions implements Serializable {
+public class Transactions extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -92,5 +91,16 @@ public class Transactions implements Serializable {
     @Column(name = "updated_at", nullable = false)
     private Date updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        super.autoAssignTenant();
+        if (this.createdAt == null) this.createdAt = new Date();
+        if (this.updatedAt == null) this.updatedAt = new Date();
+        if (this.recurringInstance == null) this.recurringInstance = false;
+    }
 
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = new Date();
+    }
 }

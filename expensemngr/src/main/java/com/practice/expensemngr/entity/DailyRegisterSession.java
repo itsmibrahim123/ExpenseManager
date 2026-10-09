@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -18,7 +17,7 @@ import java.util.Date;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "daily_register_sessions")
-public class DailyRegisterSession implements Serializable {
+public class DailyRegisterSession extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -56,6 +55,7 @@ public class DailyRegisterSession implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        super.autoAssignTenant();
         if (this.openedAt == null) this.openedAt = new Date();
         if (this.status == null) this.status = "OPEN";
         if (this.openingCashBalance == null) this.openingCashBalance = BigDecimal.ZERO;

@@ -1,8 +1,10 @@
 import React from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Divider, Button } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
+import { useTenant } from '../../context/TenantContext';
 
 const DailyAccountStatement = ({ summary, onPrint }) => {
+    const tenantBrand = useTenant();
     if (!summary) return null;
 
     const handlePrint = () => {
@@ -43,12 +45,17 @@ const DailyAccountStatement = ({ summary, onPrint }) => {
                 {/* Header */}
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                     <Box>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                            EXPENSE MANAGER ERP
+                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1976d2', textTransform: 'uppercase' }}>
+                            {tenantBrand.storeName}
                         </Typography>
                         <Typography variant="subtitle2" color="textSecondary">
                             Daily Register Closure & Account Statement (Z-Report)
                         </Typography>
+                        {tenantBrand.taxNumber && (
+                            <Typography variant="caption" color="textSecondary">
+                                Tax Reg ID: {tenantBrand.taxNumber}
+                            </Typography>
+                        )}
                     </Box>
                     <Box textAlign="right">
                         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
@@ -97,7 +104,7 @@ const DailyAccountStatement = ({ summary, onPrint }) => {
                             <TableRow>
                                 <TableCell><strong>Payment Channel</strong></TableCell>
                                 <TableCell align="center"><strong>Transaction Count</strong></TableCell>
-                                <TableCell align="right"><strong>Amount (PKR)</strong></TableCell>
+                                <TableCell align="right"><strong>Amount</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -141,7 +148,7 @@ const DailyAccountStatement = ({ summary, onPrint }) => {
                         <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
                             <TableRow>
                                 <TableCell><strong>Expense Category / Channel</strong></TableCell>
-                                <TableCell align="right"><strong>Amount (PKR)</strong></TableCell>
+                                <TableCell align="right"><strong>Amount</strong></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

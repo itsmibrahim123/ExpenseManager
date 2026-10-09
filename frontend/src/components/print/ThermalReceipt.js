@@ -1,8 +1,10 @@
 import React from 'react';
 import { Box, Typography, Divider, Button } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
+import { useTenant } from '../../context/TenantContext';
 
 const ThermalReceipt = ({ invoice, onPrint }) => {
+    const tenantBrand = useTenant();
     if (!invoice) return null;
 
     const handlePrint = () => {
@@ -40,17 +42,22 @@ const ThermalReceipt = ({ invoice, onPrint }) => {
                     '& *': { fontFamily: '"Courier New", Courier, monospace !important' }
                 }}
             >
-                {/* Header */}
+                {/* Dynamic Store Header */}
                 <Box textAlign="center" mb={1}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '16px' }}>
-                        EXPENSE MANAGER POS
+                    {tenantBrand.logoUrl && (
+                        <Box component="img" src={tenantBrand.logoUrl} alt="Store Logo" sx={{ maxHeight: 40, mb: 1 }} />
+                    )}
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '16px', textTransform: 'uppercase' }}>
+                        {tenantBrand.storeName}
                     </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '11px' }}>
-                        Retail & Inventory Operations
+                    <Typography variant="body2" sx={{ fontSize: '11px', whiteSpace: 'pre-line' }}>
+                        {tenantBrand.receiptHeader}
                     </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '10px' }}>
-                        Tel: +92-300-0000000 | Tax ID: 9876543-2
-                    </Typography>
+                    {tenantBrand.taxNumber && (
+                        <Typography variant="body2" sx={{ fontSize: '10px' }}>
+                            Tax Reg #: {tenantBrand.taxNumber}
+                        </Typography>
+                    )}
                 </Box>
 
                 <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
@@ -142,16 +149,13 @@ const ThermalReceipt = ({ invoice, onPrint }) => {
 
                 <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
-                {/* Footer Barcode Simulation */}
+                {/* Dynamic Store Footer */}
                 <Box textAlign="center" mt={1}>
                     <Typography variant="body2" sx={{ fontSize: '10px', tracking: '2px', fontFamily: 'monospace' }}>
                         ||||| |||||| |||||||| |||||
                     </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '10px', mt: 0.5 }}>
-                        Thank you for your business!
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '9px', color: '#666' }}>
-                        Returns accepted within 7 days with receipt.
+                    <Typography variant="body2" sx={{ fontSize: '10px', mt: 0.5, whiteSpace: 'pre-line' }}>
+                        {tenantBrand.receiptFooter}
                     </Typography>
                 </Box>
             </Box>

@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.util.Date;
 
 @Entity
@@ -17,7 +16,7 @@ import java.util.Date;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "stock_movements")
-public class StockMovement implements Serializable {
+public class StockMovement extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -53,6 +52,7 @@ public class StockMovement implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        super.autoAssignTenant();
         this.createdAt = new Date();
     }
 }

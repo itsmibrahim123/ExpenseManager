@@ -1,60 +1,82 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import AuthService from '../api/authService';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { login as loginApi } from '../api/auth';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [role, setRole] = useState(localStorage.getItem('role') || null);
+    const [tenantId, setTenantId] = useState(localStorage.getItem('tenantId') || null);
+    const [storeName, setStoreName] = useState(localStorage.getItem('storeName') || '');
+    const [tenantSettings, setTenantSettings] = useState(
+        localStorage.getItem('tenantSettings') ? JSON.parse(localStorage.getItem('tenantSettings')) : null
+    );
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const currentUser = AuthService.getCurrentUser();
-        if (currentUser) {
-            setUser(currentUser);
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
         }
         setLoading(false);
     }, []);
 
     const login = async (email, password) => {
-        try {
-            const data = await AuthService.login(email, password);
-            setUser(data);
-            return data;
-        } catch (error) {
-            throw error;
-        }
-    };
+        const res = await loginApi(email, password);
+        const data = res.data;
+        
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        if (data.tenantId) localStorage.setItem('tenantId', data.tenantId);
+        if (data.storeName) localStorage.setItem('storeName', data.storeName);
+        if (data.tenantSettings) localStorage.setItem('tenantSettings', JSON.stringify(data.tenantSettings));
 
-    const loginAsGuest = async () => {
-        try {
-            // Use credentials from DataSeeder
-            console.log("Attempting guest login...");
-            const data = await AuthService.login('guest@example.com', 'guest123');
-            console.log("Guest login successful", data);
-            setUser(data);
-            return data;
-        } catch (error) {
-            console.error("Guest login failed details:", error.response ? error.response.data : error.message);
-            throw error;
-        }
-    };
+        const userInfo = {
+            id: data.userId,
+            fullName: data.fullName,
+            email: data.email
+        };
+        localStorage.setItem('user', JSON.stringify(userInfo));
 
-    const register = async (userData) => {
-        try {
-            return await AuthService.register(userData);
-        } catch (error) {
-            throw error;
-        }
+        setUser(userInfo);
+        setRole(data.role);
+        setTenantId(data.tenantId);
+        setStoreName(data.storeName);
+        setTenantSettings(data.tenantSettings);
+        return data;
     };
 
     const logout = () => {
-        AuthService.logout();
+        localStorage.clear();
         setUser(null);
+        setRole(null);
+        setTenantId(null);
+        setStoreName('');
+        setTenantSettings(null);
     };
 
+    const isSuperAdmin = () => role === 'ROLE_SUPER_ADMIN';
+    const isStoreAdmin = () => role === 'ROLE_STORE_ADMIN';
+    const isCashier = () => role === 'ROLE_CASHIER';
+    const isInventoryManager = () => role === 'ROLE_INVENTORY_MANAGER';
+
     return (
-        <AuthContext.Provider value={{ user, login, loginAsGuest, logout, register, loading }}>
-            {!loading && children}
+        <AuthContext.Provider value={{
+            user,
+            role,
+            tenantId,
+            storeName,
+            tenantSettings,
+            setTenantSettings,
+            loading,
+            login,
+            logout,
+            isSuperAdmin,
+            isStoreAdmin,
+            isCashier,
+            isInventoryManager
+        }}>
+            {children}
         </AuthContext.Provider>
     );
 };

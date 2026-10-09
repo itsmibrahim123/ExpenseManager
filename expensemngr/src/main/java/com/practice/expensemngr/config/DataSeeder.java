@@ -8,13 +8,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
 
+    @Autowired
+    private TenantRepository tenantRepository;
+    @Autowired
+    private TenantSettingsRepository tenantSettingsRepository;
     @Autowired
     private UsersRepository usersRepository;
     @Autowired
@@ -40,102 +47,133 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (usersRepository.existsByEmail("guest@example.com")) {
-            seedInventoryAndCustomersIfMissing();
-            return; // Data already exists
+        System.out.println("Initializing SaaS Multi-Tenant Seeder...");
+
+        // 1. Seed Super Admin User if missing
+        if (!usersRepository.existsByEmail("admin@saas.com")) {
+            Users superAdmin = Users.builder()
+                    .fullName("Super Admin")
+                    .email("admin@saas.com")
+                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .role(UserRole.ROLE_SUPER_ADMIN)
+                    .userStatus(UserStatus.ACTIVE)
+                    .status("ACTIVE")
+                    .preferredCurrency("PKR")
+                    .createdAt(new Date())
+                    .updatedAt(new Date())
+                    .build();
+            usersRepository.save(superAdmin);
+            System.out.println("Seeded Super Admin user: admin@saas.com / admin123");
         }
 
-        System.out.println("Seeding database with sample data...");
+        // 2. Seed Default Tenant & Store Data if missing
+        if (!tenantRepository.existsBySlug("main-store")) {
+            Tenant defaultTenant = Tenant.builder()
+                    .storeName("Main Retail Store")
+                    .slug("main-store")
+                    .contactEmail("guest@example.com")
+                    .contactPhone("+92-300-1112233")
+                    .currencyCode("PKR")
+                    .status(TenantStatus.ACTIVE)
+                    .planTier(PlanTier.ENTERPRISE)
+                    .expiresAt(Instant.now().plus(365, ChronoUnit.DAYS))
+                    .build();
 
-        // 1. Create Guest User
-        Users guestUser = Users.builder()
-                .fullName("Guest User")
-                .email("guest@example.com")
-                .passwordHash(passwordEncoder.encode("guest123"))
-                .status("ACTIVE")
-                .preferredCurrency("PKR")
-                .createdAt(new Date())
-                .updatedAt(new Date())
-                .build();
-        guestUser = usersRepository.save(guestUser);
-        Long userId = guestUser.getId();
+            defaultTenant = tenantRepository.save(defaultTenant);
+            UUID tenantId = defaultTenant.getId();
 
-        // 2. Create Accounts
-        Accounts cash = createAccount(userId, "Cash Drawer", "CASH", "PKR", new BigDecimal("50000"));
-        Accounts bank = createAccount(userId, "HBL Business Account", "BANK", "PKR", new BigDecimal("250000"));
-        Accounts credit = createAccount(userId, "Standard Chartered", "CREDIT_CARD", "PKR", new BigDecimal("0"));
+            TenantSettings settings = TenantSettings.builder()
+                    .tenantId(tenantId)
+                    .taxNumber("TAX-MAIN-8899")
+                    .taxRateDefault(new BigDecimal("5.0"))
+                    .receiptHeader("MAIN RETAIL STORE\nPlaza Center, Commercial Market, Lahore")
+                    .receiptFooter("Thank you for shopping at Main Retail Store!\nReturns valid for 7 days with thermal receipt.")
+                    .allowNegativeStock(false)
+                    .build();
+            tenantSettingsRepository.save(settings);
 
-        // 3. Create Categories
-        Categories food = createCategory(userId, "Food & Dining", "EXPENSE");
-        Categories transport = createCategory(userId, "Transportation", "EXPENSE");
-        Categories utilities = createCategory(userId, "Utilities", "EXPENSE");
-        Categories salary = createCategory(userId, "Salary", "INCOME");
-        Categories posSales = createCategory(userId, "POS Retail Sales", "INCOME");
+            // Create Store Admin User
+            Users storeAdmin = Users.builder()
+                    .tenantId(tenantId)
+                    .fullName("Guest Store Admin")
+                    .email("guest@example.com")
+                    .passwordHash(passwordEncoder.encode("guest123"))
+                    .role(UserRole.ROLE_STORE_ADMIN)
+                    .userStatus(UserStatus.ACTIVE)
+                    .status("ACTIVE")
+                    .preferredCurrency("PKR")
+                    .createdAt(new Date())
+                    .updatedAt(new Date())
+                    .build();
+            storeAdmin = usersRepository.save(storeAdmin);
+            Long userId = storeAdmin.getId();
 
-        // 4. Create Merchants
-        Merchants uber = createMerchant(userId, "Uber");
-        Merchants foodpanda = createMerchant(userId, "Foodpanda");
-        Merchants daraz = createMerchant(userId, "Daraz");
+            // Seed Accounts for Tenant
+            Accounts cash = createAccount(tenantId, userId, "Cash Drawer", "CASH", "PKR", new BigDecimal("50000"));
+            Accounts bank = createAccount(tenantId, userId, "HBL Business Account", "BANK", "PKR", new BigDecimal("250000"));
+            Accounts credit = createAccount(tenantId, userId, "Standard Chartered", "CREDIT_CARD", "PKR", new BigDecimal("0"));
 
-        // 5. Create Payment Methods
-        PaymentMethods debitCard = createPaymentMethod(userId, "Debit Card", "CARD");
-        PaymentMethods cashMethod = createPaymentMethod(userId, "Cash", "CASH");
+            // Seed Categories for Tenant
+            Categories food = createCategory(tenantId, userId, "Food & Dining", "EXPENSE");
+            Categories transport = createCategory(tenantId, userId, "Transportation", "EXPENSE");
+            Categories utilities = createCategory(tenantId, userId, "Utilities", "EXPENSE");
+            Categories salary = createCategory(tenantId, userId, "Salary", "INCOME");
+            Categories posSales = createCategory(tenantId, userId, "POS Retail Sales", "INCOME");
 
-        // 6. Create Transactions
-        createTransaction(userId, bank, salary, "INCOME", new BigDecimal("250000"), "Monthly Salary", "CLEARED");
-        createTransaction(userId, cash, food, "EXPENSE", new BigDecimal("1500"), "Lunch with team", "CLEARED");
+            // Seed Merchants & Payment Methods
+            createMerchant(userId, "Uber");
+            createMerchant(userId, "Foodpanda");
+            createPaymentMethod(userId, "Debit Card", "CARD");
+            createPaymentMethod(userId, "Cash", "CASH");
 
-        // 7. Create Budget
-        createBudget(userId, "Monthly Expenses", "MONTHLY", new BigDecimal("50000"), Arrays.asList(food, transport));
+            // Seed Transactions
+            createTransaction(tenantId, userId, bank, salary, "INCOME", new BigDecimal("250000"), "Monthly Salary", "CLEARED");
+            createTransaction(tenantId, userId, cash, food, "EXPENSE", new BigDecimal("1500"), "Lunch with team", "CLEARED");
 
-        seedInventoryAndCustomersIfMissing();
+            // Seed Budget
+            createBudget(userId, "Monthly Expenses", "MONTHLY", new BigDecimal("50000"), Arrays.asList(food, transport));
 
-        System.out.println("Database seeding completed.");
+            // Seed Products for Tenant
+            createProduct(tenantId, "SKU-1001", "890123456701", "Wireless Optical Mouse", "2.4GHz Ergonomic Mouse", new BigDecimal("800"), new BigDecimal("1500"), 45, 10, "PCS");
+            createProduct(tenantId, "SKU-1002", "890123456702", "Mechanical Gaming Keyboard", "RGB Backlit Blue Switches", new BigDecimal("3500"), new BigDecimal("6500"), 20, 5, "PCS");
+            createProduct(tenantId, "SKU-1003", "890123456703", "USB-C Fast Charging Cable", "2-Meter Braided Nylon Cable", new BigDecimal("250"), new BigDecimal("600"), 100, 15, "PCS");
+            createProduct(tenantId, "SKU-1004", "890123456704", "Full HD 1080p Webcam", "Built-in Noise Cancelling Mic", new BigDecimal("2200"), new BigDecimal("4200"), 8, 10, "PCS");
+            createProduct(tenantId, "SKU-1005", "890123456705", "Portable Power Bank 20000mAh", "Dual USB Fast Charge", new BigDecimal("2800"), new BigDecimal("4900"), 3, 5, "PCS");
+
+            // Seed Customers for Tenant
+            createCustomer(tenantId, "Walk-in Customer", "000-000-0000", "walkin@mainstore.com", "Main Retail Counter");
+            createCustomer(tenantId, "Ali Ahmed", "+92-300-1234567", "ali.ahmed@example.com", "House #45, Street 12, Lahore");
+            createCustomer(tenantId, "Sara Khan", "+92-321-9876543", "sara.k@example.com", "Suite 4B, Plaza Center, Karachi");
+
+            System.out.println("Seeded default store tenant: main-store / guest@example.com");
+        }
     }
 
-    private void seedInventoryAndCustomersIfMissing() {
-        if (productRepository.count() == 0) {
-            System.out.println("Seeding sample products...");
-            createProduct("SKU-1001", "890123456701", "Wireless Optical Mouse", "2.4GHz Ergonomic Mouse", new BigDecimal("800"), new BigDecimal("1500"), 45, 10, "PCS");
-            createProduct("SKU-1002", "890123456702", "Mechanical Gaming Keyboard", "RGB Backlit Blue Switches", new BigDecimal("3500"), new BigDecimal("6500"), 20, 5, "PCS");
-            createProduct("SKU-1003", "890123456703", "USB-C Fast Charging Cable", "2-Meter Braided Nylon Cable", new BigDecimal("250"), new BigDecimal("600"), 100, 15, "PCS");
-            createProduct("SKU-1004", "890123456704", "Full HD 1080p Webcam", "Built-in Noise Cancelling Mic", new BigDecimal("2200"), new BigDecimal("4200"), 8, 10, "PCS"); // Low stock
-            createProduct("SKU-1005", "890123456705", "Portable Power Bank 20000mAh", "Dual USB Fast Charge", new BigDecimal("2800"), new BigDecimal("4900"), 3, 5, "PCS"); // Low stock
-        }
-
-        if (customerRepository.count() == 0) {
-            System.out.println("Seeding sample customers...");
-            createCustomer("Walk-in Customer", "000-000-0000", "walkin@store.com", "Main Retail Counter");
-            createCustomer("Ali Ahmed", "+92-300-1234567", "ali.ahmed@example.com", "House #45, Street 12, Lahore");
-            createCustomer("Sara Khan", "+92-321-9876543", "sara.k@example.com", "Suite 4B, Plaza Center, Karachi");
-        }
-    }
-
-    private Product createProduct(String sku, String barcode, String name, String desc, BigDecimal cost, BigDecimal selling, int stock, int reorder, String unit) {
+    private Product createProduct(UUID tenantId, String sku, String barcode, String name, String desc, BigDecimal cost, BigDecimal selling, int stock, int reorder, String unit) {
         return productRepository.save(Product.builder()
-                .sku(sku).barcode(barcode).name(name).description(desc)
+                .tenantId(tenantId).sku(sku).barcode(barcode).name(name).description(desc)
                 .costPrice(cost).sellingPrice(selling).currentStock(stock)
                 .reorderLevel(reorder).unit(unit).active(true)
                 .createdAt(new Date()).updatedAt(new Date()).build());
     }
 
-    private Customer createCustomer(String name, String phone, String email, String address) {
+    private Customer createCustomer(UUID tenantId, String name, String phone, String email, String address) {
         return customerRepository.save(Customer.builder()
-                .name(name).phone(phone).email(email).address(address)
+                .tenantId(tenantId).name(name).phone(phone).email(email).address(address)
                 .currentCreditBalance(BigDecimal.ZERO)
                 .createdAt(new Date()).updatedAt(new Date()).build());
     }
 
-    private Accounts createAccount(Long userId, String name, String type, String currency, BigDecimal balance) {
+    private Accounts createAccount(UUID tenantId, Long userId, String name, String type, String currency, BigDecimal balance) {
         return accountsRepository.save(Accounts.builder()
-                .userId(userId).name(name).type(type).currencyCode(currency)
+                .tenantId(tenantId).userId(userId).name(name).type(type).currencyCode(currency)
                 .initialBalance(balance).currentBalance(balance)
                 .archived(false).createdAt(new Date()).updatedAt(new Date()).build());
     }
 
-    private Categories createCategory(Long userId, String name, String type) {
+    private Categories createCategory(UUID tenantId, Long userId, String name, String type) {
         return categoriesRepository.save(Categories.builder()
-                .userId(userId).name(name).type(type).sortOrder(0)
+                .tenantId(tenantId).userId(userId).name(name).type(type).sortOrder(0)
                 .archived(false).createdAt(new Date()).updatedAt(new Date()).build());
     }
 
@@ -159,9 +197,9 @@ public class DataSeeder implements CommandLineRunner {
         return paymentMethodsRepository.save(pm);
     }
 
-    private void createTransaction(Long userId, Accounts account, Categories category, String type, BigDecimal amount, String desc, String status) {
+    private void createTransaction(UUID tenantId, Long userId, Accounts account, Categories category, String type, BigDecimal amount, String desc, String status) {
         transactionsRepository.save(Transactions.builder()
-                .userId(userId).accountId(account.getId()).categoryId(category.getId())
+                .tenantId(tenantId).userId(userId).accountId(account.getId()).categoryId(category.getId())
                 .type(type).amount(amount).currencyCode("PKR")
                 .description(desc).status(status).transactionDate(new Date())
                 .recurringInstance(false)

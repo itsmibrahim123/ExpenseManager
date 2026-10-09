@@ -7,7 +7,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -18,7 +17,7 @@ import java.util.Date;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "customers")
-public class Customer implements Serializable {
+public class Customer extends BaseTenantEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -53,6 +52,7 @@ public class Customer implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        super.autoAssignTenant();
         this.createdAt = new Date();
         this.updatedAt = new Date();
         if (this.currentCreditBalance == null) {
