@@ -32,7 +32,8 @@ function App() {
           <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/signup" element={<Register />} />
+              <Route path="/register-user" element={<Register />} />
               
               {/* Super Admin SaaS Platform Routes */}
               <Route element={<SuperAdminRoute />}>
@@ -49,6 +50,7 @@ function App() {
                   <Route element={<Layout><Inventory /></Layout>} path="/inventory" />
                   <Route element={<Layout><Invoices /></Layout>} path="/invoices" />
                   <Route element={<Layout><Invoices /></Layout>} path="/billing/invoices" />
+                  <Route element={<Layout><DailyRegister /></Layout>} path="/daily-register" />
                   <Route element={<Layout><DailyRegister /></Layout>} path="/register" />
                   <Route element={<Layout><DailyRegister /></Layout>} path="/reports/daily-register" />
                   <Route element={<Layout><Accounts /></Layout>} path="/accounts" />

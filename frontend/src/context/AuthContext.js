@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }) => {
 
         const userInfo = {
             id: data.userId,
+            userId: data.userId,
             fullName: data.fullName,
             email: data.email
         };

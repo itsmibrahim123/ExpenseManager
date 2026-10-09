@@ -142,8 +142,9 @@ public class InvoiceService {
 
         // Update Customer Credit Balance if balance due
         if (request.getCustomerId() != null && balanceDue.compareTo(BigDecimal.ZERO) > 0) {
+            final BigDecimal finalBalanceDue = balanceDue;
             customerRepository.findById(request.getCustomerId()).ifPresent(customer -> {
-                customer.setCurrentCreditBalance(customer.getCurrentCreditBalance().add(balanceDue));
+                customer.setCurrentCreditBalance(customer.getCurrentCreditBalance().add(finalBalanceDue));
                 customerRepository.save(customer);
             });
         }
@@ -153,7 +154,7 @@ public class InvoiceService {
             Long targetAccountId = request.getAccountId();
             if (targetAccountId == null) {
                 // Pick first account for user
-                List<Accounts> userAccounts = accountsRepository.findByUserIdAndIsArchivedFalse(request.getUserId());
+                List<Accounts> userAccounts = accountsRepository.findByUserIdAndArchivedFalse(request.getUserId());
                 if (!userAccounts.isEmpty()) {
                     targetAccountId = userAccounts.get(0).getId();
                 }
@@ -168,7 +169,7 @@ public class InvoiceService {
                             .categoryId(request.getCategoryId() != null ? request.getCategoryId() : 1L)
                             .type("INCOME")
                             .amount(paidAmount)
-                            .currencyCode(account.getCurrency())
+                            .currencyCode(account.getCurrencyCode())
                             .transactionDate(new Date())
                             .status("COMPLETED")
                             .description("POS Invoice Income (" + request.getPaymentMethod() + "): " + invoiceNum)

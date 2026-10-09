@@ -150,7 +150,7 @@ public class InventoryService {
                 .categoryId(request.getCategoryId() != null ? request.getCategoryId() : (product.getCategoryId() != null ? product.getCategoryId() : 1L))
                 .type("EXPENSE")
                 .amount(totalCost)
-                .currencyCode(account.getCurrency())
+                .currencyCode(account.getCurrencyCode())
                 .transactionDate(new Date())
                 .status("COMPLETED")
                 .description("Inventory Restock Expense: " + product.getName() + " (" + request.getQuantity() + " " + product.getUnit() + ")")

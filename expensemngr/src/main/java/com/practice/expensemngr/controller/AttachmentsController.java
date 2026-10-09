@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @CrossOrigin(origins = "http://localhost:3000")
 @Validated
 @RestController
-@RequestMapping("/attachments")
+@RequestMapping("/attachments-legacy")
 public class AttachmentsController {
 
     @Autowired

@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface AccountsRepository extends JpaRepository<Accounts, Long>, JpaSpecificationExecutor<Accounts> {
     List<Accounts> findByUserId(Long userId);
+    List<Accounts> findByUserIdAndArchivedFalse(Long userId);
 }

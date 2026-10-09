@@ -23,4 +23,8 @@ const AccountsService = {
     }
 };
 
+export const getAccountsByUser = (userId, includeArchived = false) => {
+    return api.get('/accounts', { params: { userId, includeArchived } });
+};
+
 export default AccountsService;

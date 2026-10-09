@@ -36,7 +36,7 @@ const Sidebar = ({ variant, open, onClose }) => {
         { text: 'POS Terminal', icon: <PointOfSaleIcon />, path: '/pos' },
         { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
         { text: 'Invoices', icon: <ReceiptLongIcon />, path: '/invoices' },
-        { text: 'Daily Register', icon: <AccountBalanceWalletIcon />, path: '/register' },
+        { text: 'Daily Register', icon: <AccountBalanceWalletIcon />, path: '/daily-register' },
         { text: 'Accounts', icon: <AccountBalanceIcon />, path: '/accounts' },
         { text: 'Transactions', icon: <ReceiptIcon />, path: '/transactions' },
         { text: 'Budgets', icon: <PieChartIcon />, path: '/budgets' },

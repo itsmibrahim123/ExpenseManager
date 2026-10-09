@@ -99,7 +99,7 @@ const Login = () => {
                             Continue as Guest
                         </Button>
                         <Box sx={{ textAlign: 'center' }}>
-                            <Link to="/register" style={{ textDecoration: 'none', color: '#1976d2' }}>
+                            <Link to="/signup" style={{ textDecoration: 'none', color: '#1976d2' }}>
                                 {"Don't have an account? Sign Up"}
                             </Link>
                         </Box>

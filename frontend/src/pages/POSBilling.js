@@ -3,7 +3,7 @@ import {
     Box, Typography, Grid, Paper, TextField, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Card, CardContent, CardActionArea,
     Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent,
-    DialogActions, Alert, Badge, ToggleButtonGroup, ToggleButton
+    DialogActions, Alert, Badge, ToggleButtonGroup, ToggleButton, Chip
 } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import SearchIcon from '@mui/icons-material/Search';
