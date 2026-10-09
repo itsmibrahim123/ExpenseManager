@@ -13,6 +13,10 @@ import Transactions from './pages/Transactions';
 import Budgets from './pages/Budgets';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Inventory from './pages/Inventory';
+import POSBilling from './pages/POSBilling';
+import Invoices from './pages/Invoices';
+import DailyRegister from './pages/DailyRegister';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -27,6 +31,13 @@ function App() {
             
             <Route element={<ProtectedRoute />}>
                 <Route element={<Layout><Dashboard /></Layout>} path="/" />
+                <Route element={<Layout><POSBilling /></Layout>} path="/pos" />
+                <Route element={<Layout><POSBilling /></Layout>} path="/billing/pos" />
+                <Route element={<Layout><Inventory /></Layout>} path="/inventory" />
+                <Route element={<Layout><Invoices /></Layout>} path="/invoices" />
+                <Route element={<Layout><Invoices /></Layout>} path="/billing/invoices" />
+                <Route element={<Layout><DailyRegister /></Layout>} path="/register" />
+                <Route element={<Layout><DailyRegister /></Layout>} path="/reports/daily-register" />
                 <Route element={<Layout><Accounts /></Layout>} path="/accounts" />
                 <Route element={<Layout><Transactions /></Layout>} path="/transactions" />
                 <Route element={<Layout><Transactions /></Layout>} path="/transfers" />

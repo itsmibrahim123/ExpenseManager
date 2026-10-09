@@ -31,12 +31,17 @@ public class DataSeeder implements CommandLineRunner {
     private BudgetsRepository budgetsRepository;
     @Autowired
     private BudgetItemsRepository budgetItemsRepository;
+    @Autowired
+    private ProductRepository productRepository;
+    @Autowired
+    private CustomerRepository customerRepository;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public void run(String... args) throws Exception {
         if (usersRepository.existsByEmail("guest@example.com")) {
+            seedInventoryAndCustomersIfMissing();
             return; // Data already exists
         }
 
@@ -56,8 +61,8 @@ public class DataSeeder implements CommandLineRunner {
         Long userId = guestUser.getId();
 
         // 2. Create Accounts
-        Accounts cash = createAccount(userId, "Cash Wallet", "CASH", "PKR", new BigDecimal("5000"));
-        Accounts bank = createAccount(userId, "HBL Savings", "BANK", "PKR", new BigDecimal("150000"));
+        Accounts cash = createAccount(userId, "Cash Drawer", "CASH", "PKR", new BigDecimal("50000"));
+        Accounts bank = createAccount(userId, "HBL Business Account", "BANK", "PKR", new BigDecimal("250000"));
         Accounts credit = createAccount(userId, "Standard Chartered", "CREDIT_CARD", "PKR", new BigDecimal("0"));
 
         // 3. Create Categories
@@ -65,7 +70,7 @@ public class DataSeeder implements CommandLineRunner {
         Categories transport = createCategory(userId, "Transportation", "EXPENSE");
         Categories utilities = createCategory(userId, "Utilities", "EXPENSE");
         Categories salary = createCategory(userId, "Salary", "INCOME");
-        Categories freelance = createCategory(userId, "Freelance", "INCOME");
+        Categories posSales = createCategory(userId, "POS Retail Sales", "INCOME");
 
         // 4. Create Merchants
         Merchants uber = createMerchant(userId, "Uber");
@@ -77,19 +82,48 @@ public class DataSeeder implements CommandLineRunner {
         PaymentMethods cashMethod = createPaymentMethod(userId, "Cash", "CASH");
 
         // 6. Create Transactions
-        // Income
         createTransaction(userId, bank, salary, "INCOME", new BigDecimal("250000"), "Monthly Salary", "CLEARED");
-        
-        // Expenses
         createTransaction(userId, cash, food, "EXPENSE", new BigDecimal("1500"), "Lunch with team", "CLEARED");
-        createTransaction(userId, bank, transport, "EXPENSE", new BigDecimal("800"), "Uber to office", "CLEARED");
-        createTransaction(userId, credit, utilities, "EXPENSE", new BigDecimal("12000"), "Electricity Bill", "CLEARED");
-        createTransaction(userId, cash, food, "EXPENSE", new BigDecimal("4500"), "Groceries", "CLEARED");
 
         // 7. Create Budget
         createBudget(userId, "Monthly Expenses", "MONTHLY", new BigDecimal("50000"), Arrays.asList(food, transport));
 
+        seedInventoryAndCustomersIfMissing();
+
         System.out.println("Database seeding completed.");
+    }
+
+    private void seedInventoryAndCustomersIfMissing() {
+        if (productRepository.count() == 0) {
+            System.out.println("Seeding sample products...");
+            createProduct("SKU-1001", "890123456701", "Wireless Optical Mouse", "2.4GHz Ergonomic Mouse", new BigDecimal("800"), new BigDecimal("1500"), 45, 10, "PCS");
+            createProduct("SKU-1002", "890123456702", "Mechanical Gaming Keyboard", "RGB Backlit Blue Switches", new BigDecimal("3500"), new BigDecimal("6500"), 20, 5, "PCS");
+            createProduct("SKU-1003", "890123456703", "USB-C Fast Charging Cable", "2-Meter Braided Nylon Cable", new BigDecimal("250"), new BigDecimal("600"), 100, 15, "PCS");
+            createProduct("SKU-1004", "890123456704", "Full HD 1080p Webcam", "Built-in Noise Cancelling Mic", new BigDecimal("2200"), new BigDecimal("4200"), 8, 10, "PCS"); // Low stock
+            createProduct("SKU-1005", "890123456705", "Portable Power Bank 20000mAh", "Dual USB Fast Charge", new BigDecimal("2800"), new BigDecimal("4900"), 3, 5, "PCS"); // Low stock
+        }
+
+        if (customerRepository.count() == 0) {
+            System.out.println("Seeding sample customers...");
+            createCustomer("Walk-in Customer", "000-000-0000", "walkin@store.com", "Main Retail Counter");
+            createCustomer("Ali Ahmed", "+92-300-1234567", "ali.ahmed@example.com", "House #45, Street 12, Lahore");
+            createCustomer("Sara Khan", "+92-321-9876543", "sara.k@example.com", "Suite 4B, Plaza Center, Karachi");
+        }
+    }
+
+    private Product createProduct(String sku, String barcode, String name, String desc, BigDecimal cost, BigDecimal selling, int stock, int reorder, String unit) {
+        return productRepository.save(Product.builder()
+                .sku(sku).barcode(barcode).name(name).description(desc)
+                .costPrice(cost).sellingPrice(selling).currentStock(stock)
+                .reorderLevel(reorder).unit(unit).active(true)
+                .createdAt(new Date()).updatedAt(new Date()).build());
+    }
+
+    private Customer createCustomer(String name, String phone, String email, String address) {
+        return customerRepository.save(Customer.builder()
+                .name(name).phone(phone).email(email).address(address)
+                .currentCreditBalance(BigDecimal.ZERO)
+                .createdAt(new Date()).updatedAt(new Date()).build());
     }
 
     private Accounts createAccount(Long userId, String name, String type, String currency, BigDecimal balance) {
@@ -133,7 +167,6 @@ public class DataSeeder implements CommandLineRunner {
                 .recurringInstance(false)
                 .createdAt(new Date()).updatedAt(new Date()).build());
         
-        // Update Account Balance (simplified logic for seeder)
         if (type.equals("INCOME")) {
             account.setCurrentBalance(account.getCurrentBalance().add(amount));
         } else {
@@ -143,7 +176,6 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void createBudget(Long userId, String name, String period, BigDecimal totalLimit, List<Categories> categories) {
-        // Calculate end date (30 days from now)
         Date startDate = new Date();
         Date endDate = new Date(startDate.getTime() + (30L * 24 * 60 * 60 * 1000));
 

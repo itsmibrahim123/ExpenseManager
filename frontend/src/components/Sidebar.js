@@ -9,12 +9,20 @@ import PieChartIcon from '@mui/icons-material/PieChart';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 240;
 
 const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+    { text: 'POS Terminal', icon: <PointOfSaleIcon />, path: '/pos' },
+    { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
+    { text: 'Invoices', icon: <ReceiptLongIcon />, path: '/invoices' },
+    { text: 'Daily Register', icon: <AccountBalanceWalletIcon />, path: '/register' },
     { text: 'Accounts', icon: <AccountBalanceIcon />, path: '/accounts' },
     { text: 'Transactions', icon: <ReceiptIcon />, path: '/transactions' },
     { text: 'Budgets', icon: <PieChartIcon />, path: '/budgets' },
@@ -57,7 +65,7 @@ const Sidebar = ({ variant, open, onClose }) => {
             variant={variant}
             open={open}
             onClose={onClose}
-            ModalProps={{ keepMounted: true }} // Better open performance on mobile.
+            ModalProps={{ keepMounted: true }}
             sx={{
                 display: { xs: variant === 'temporary' ? 'block' : 'none', sm: variant === 'permanent' ? 'block' : 'none' },
                 '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },

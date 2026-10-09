@@ -11,3 +11,39 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Print Engine Styles */
+@media print {
+  /* Hide UI Layout headers, sidebars, buttons during print */
+  header,
+  nav,
+  .MuiDrawer-root,
+  .MuiAppBar-root,
+  .no-print,
+  .MuiDialogActions-root,
+  .MuiBackdrop-root {
+    display: none !important;
+  }
+
+  body, html {
+    background-color: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .MuiDialog-paper {
+    box-shadow: none !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Thermal 80mm / 58mm printer optimization */
+  #thermal-receipt-content {
+    width: 100% !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+}
