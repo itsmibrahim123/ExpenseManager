@@ -47,6 +47,10 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const loginAsGuest = async () => {
+        return login('guest@example.com', 'guest123');
+    };
+
     const logout = () => {
         localStorage.clear();
         setUser(null);
@@ -71,6 +75,7 @@ export const AuthProvider = ({ children }) => {
             setTenantSettings,
             loading,
             login,
+            loginAsGuest,
             logout,
             isSuperAdmin,
             isStoreAdmin,

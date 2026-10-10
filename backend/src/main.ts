@@ -9,7 +9,7 @@ async function bootstrap() {
 
   // Enable CORS for frontend
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Tenant-Id', 'Accept'],
     credentials: true,
@@ -38,7 +38,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 8080;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`🚀 ExpenseManager NestJS Backend running on: http://localhost:${port}`);
   logger.log(`📚 Swagger API Documentation available at: http://localhost:${port}/api/docs`);
 }

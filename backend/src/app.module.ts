@@ -25,7 +25,10 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SupportingModule } from './modules/budgets/supporting.module';
 
+import { AppController } from './app.controller';
+
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
