@@ -1,0 +1,46 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule);
+
+  // Enable CORS for frontend
+  app.enableCors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Tenant-Id', 'Accept'],
+    credentials: true,
+  });
+
+  // Global Validation Pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
+
+  // Swagger Documentation Setup
+  const config = new DocumentBuilder()
+    .setTitle('ExpenseManager SaaS ERP Backend API')
+    .setDescription(
+      'Multi-tenant SaaS ERP Backend migrated to NestJS + TypeScript with RBAC, POS checkout calculations, and daily register accounting workflows.',
+    )
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addApiKey({ type: 'apiKey', name: 'X-Tenant-Id', in: 'header' }, 'X-Tenant-Id')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port = process.env.PORT || 8080;
+  await app.listen(port);
+  logger.log(`🚀 ExpenseManager NestJS Backend running on: http://localhost:${port}`);
+  logger.log(`📚 Swagger API Documentation available at: http://localhost:${port}/api/docs`);
+}
+
+bootstrap();
