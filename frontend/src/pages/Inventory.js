@@ -3,23 +3,28 @@ import {
     Box, Typography, Button, TextField, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
     Grid, FormControlLabel, Switch, MenuItem, Select, InputLabel, FormControl, Alert, CircularProgress,
-    Avatar, IconButton
+    Avatar, IconButton, Tooltip, Card, CardMedia
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import WarningIcon from '@mui/icons-material/Warning';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import CloseIcon from '@mui/icons-material/Close';
 import {
     getProducts,
     createProduct,
     updateProduct,
+    deleteProduct,
     restockProduct,
     uploadProductImage,
-    uploadImage
+    uploadImage,
+    deleteProductImage
 } from '../api/inventoryApi';
 import { getAccountsByUser } from '../api/accountsService';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +34,9 @@ const getImageUrl = (url) => {
     if (url.startsWith('http')) return url;
     return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
 };
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 const Inventory = () => {
     const { user } = useAuth();
@@ -42,11 +50,16 @@ const Inventory = () => {
     // Modals
     const [productModalOpen, setProductModalOpen] = useState(false);
     const [restockModalOpen, setRestockModalOpen] = useState(false);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [productToDelete, setProductToDelete] = useState(null);
 
     // Image Upload State
     const [selectedImageFile, setSelectedImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [imageError, setImageError] = useState('');
     const [savingProduct, setSavingProduct] = useState(false);
 
     // Forms
@@ -80,13 +93,67 @@ const Inventory = () => {
 
     const showAlert = (message, severity = 'success') => {
         setAlert({ show: true, message, severity });
-        setTimeout(() => setAlert({ show: false, message: '', severity: 'success' }), 4000);
+        setTimeout(() => setAlert({ show: false, message: '', severity: 'success' }), 4500);
+    };
+
+    const validateAndProcessFile = (file) => {
+        setImageError('');
+        if (!file) return;
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase())) {
+            setImageError('Only JPG, PNG, and WebP images are allowed (up to 5MB).');
+            return;
+        }
+
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            setImageError('File size exceeds the 5MB limit. Please choose a smaller image.');
+            return;
+        }
+
+        setSelectedImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+            validateAndProcessFile(file);
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            validateAndProcessFile(e.dataTransfer.files[0]);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setSelectedImageFile(null);
+        setImagePreview(null);
+        setImageError('');
+        setProductForm(prev => ({ ...prev, imageUrl: '' }));
     };
 
     const handleOpenCreateModal = () => {
         setSelectedProduct(null);
         setSelectedImageFile(null);
         setImagePreview(null);
+        setImageError('');
         setProductForm({
             sku: 'SKU-' + Math.floor(1000 + Math.random() * 9000),
             barcode: '', name: '', description: '', costPrice: '', sellingPrice: '',
@@ -99,6 +166,7 @@ const Inventory = () => {
         setSelectedProduct(product);
         setSelectedImageFile(null);
         setImagePreview(product.imageUrl ? getImageUrl(product.imageUrl) : null);
+        setImageError('');
         setProductForm({
             sku: product.sku,
             barcode: product.barcode || '',
@@ -115,20 +183,28 @@ const Inventory = () => {
         setProductModalOpen(true);
     };
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
-        }
+    const handleOpenPreviewModal = (product) => {
+        setSelectedProduct(product);
+        setPreviewModalOpen(true);
     };
 
     const handleQuickImageUpload = async (product, e) => {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0];
         if (!file) return;
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase())) {
+            showAlert('Only JPG, PNG, and WebP images are allowed!', 'error');
+            return;
+        }
+
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            showAlert('Image size exceeds 5MB limit.', 'error');
+            return;
+        }
+
         try {
             await uploadProductImage(product.id, file);
-            showAlert(`Photo uploaded for ${product.name}!`);
+            showAlert(`Image updated successfully for ${product.name}!`);
             fetchProducts();
         } catch (err) {
             showAlert(err.response?.data?.message || 'Failed to upload photo', 'error');
@@ -147,16 +223,48 @@ const Inventory = () => {
         setRestockModalOpen(true);
     };
 
+    const handleOpenDeleteModal = (product) => {
+        setProductToDelete(product);
+        setDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!productToDelete) return;
+        try {
+            await deleteProduct(productToDelete.id);
+            showAlert(`Product "${productToDelete.name}" deleted successfully.`);
+            setDeleteModalOpen(false);
+            setProductToDelete(null);
+            fetchProducts();
+        } catch (err) {
+            showAlert(err.response?.data?.message || 'Failed to delete product', 'error');
+        }
+    };
+
     const handleSaveProduct = async (e) => {
         e.preventDefault();
         setSavingProduct(true);
         try {
             if (selectedProduct) {
                 // If editing existing product
-                await updateProduct(selectedProduct.id, productForm);
+                let updatedImageUrl = productForm.imageUrl;
+
+                // Handle image removal if user removed previous image
+                if (!imagePreview && selectedProduct.imageUrl) {
+                    await deleteProductImage(selectedProduct.id);
+                    updatedImageUrl = '';
+                }
+
+                await updateProduct(selectedProduct.id, {
+                    ...productForm,
+                    imageUrl: updatedImageUrl
+                });
+
+                // If user picked a new file to upload
                 if (selectedImageFile) {
                     await uploadProductImage(selectedProduct.id, selectedImageFile);
                 }
+
                 showAlert('Product updated successfully!');
             } else {
                 // If creating new product
@@ -166,7 +274,7 @@ const Inventory = () => {
                     finalImageUrl = uploadRes.data?.imageUrl;
                 }
                 await createProduct({ ...productForm, imageUrl: finalImageUrl });
-                showAlert('Product created successfully with photo!');
+                showAlert('Product created successfully with image!');
             }
             setProductModalOpen(false);
             fetchProducts();
@@ -199,7 +307,7 @@ const Inventory = () => {
                 <Box display="flex" alignItems="center" gap={1}>
                     <InventoryIcon color="primary" sx={{ fontSize: 32 }} />
                     <Typography variant="h4" fontWeight="bold">
-                        Product & Plate Management
+                        Product & Inventory Management
                     </Typography>
                 </Box>
                 <Button
@@ -208,7 +316,7 @@ const Inventory = () => {
                     onClick={handleOpenCreateModal}
                     size="large"
                 >
-                    Add New Product / Plate
+                    Add New Product
                 </Button>
             </Box>
 
@@ -249,11 +357,11 @@ const Inventory = () => {
             </Paper>
 
             {/* Inventory Table */}
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} elevation={1}>
                 <Table>
-                    <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                    <TableHead sx={{ backgroundColor: '#f8fafc' }}>
                         <TableRow>
-                            <TableCell><strong>Plate Photo</strong></TableCell>
+                            <TableCell sx={{ width: 110 }}><strong>Image</strong></TableCell>
                             <TableCell><strong>SKU / Barcode</strong></TableCell>
                             <TableCell><strong>Product Name</strong></TableCell>
                             <TableCell><strong>Stock Status</strong></TableCell>
@@ -287,39 +395,77 @@ const Inventory = () => {
                                     stockLabel = `Low Stock (${p.currentStock} ${p.unit})`;
                                 }
 
+                                const resolvedImg = getImageUrl(p.imageUrl);
+
                                 return (
                                     <TableRow key={p.id} hover>
                                         <TableCell>
                                             <Box display="flex" alignItems="center" gap={1}>
-                                                <Avatar
-                                                    variant="rounded"
-                                                    src={getImageUrl(p.imageUrl)}
-                                                    alt={p.name}
-                                                    sx={{
-                                                        width: 52,
-                                                        height: 52,
-                                                        bgcolor: '#f5f5f5',
-                                                        border: '1px solid #e0e0e0',
-                                                    }}
-                                                >
-                                                    <RestaurantMenuIcon color="action" />
-                                                </Avatar>
+                                                <Tooltip title={resolvedImg ? "Click to preview full image" : "No image uploaded"}>
+                                                    <Box
+                                                        onClick={() => resolvedImg && handleOpenPreviewModal(p)}
+                                                        sx={{
+                                                            position: 'relative',
+                                                            cursor: resolvedImg ? 'pointer' : 'default',
+                                                            '&:hover .zoom-overlay': {
+                                                                opacity: resolvedImg ? 1 : 0
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Avatar
+                                                            variant="rounded"
+                                                            src={resolvedImg}
+                                                            alt={p.name}
+                                                            sx={{
+                                                                width: 44,
+                                                                height: 44,
+                                                                bgcolor: '#e3f2fd',
+                                                                border: '1px solid #cfd8dc',
+                                                                transition: 'transform 0.2s',
+                                                                '&:hover': {
+                                                                    transform: resolvedImg ? 'scale(1.05)' : 'none'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Inventory2OutlinedIcon color="primary" fontSize="small" />
+                                                        </Avatar>
+                                                        {resolvedImg && (
+                                                            <Box
+                                                                className="zoom-overlay"
+                                                                sx={{
+                                                                    position: 'absolute',
+                                                                    inset: 0,
+                                                                    bgcolor: 'rgba(0,0,0,0.3)',
+                                                                    borderRadius: 1,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    opacity: 0,
+                                                                    transition: 'opacity 0.2s'
+                                                                }}
+                                                            >
+                                                                <ZoomInIcon sx={{ color: 'white', fontSize: 18 }} />
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                </Tooltip>
                                                 <label htmlFor={`quick-upload-${p.id}`}>
                                                     <input
                                                         id={`quick-upload-${p.id}`}
                                                         type="file"
-                                                        accept="image/*"
+                                                        accept="image/jpeg,image/png,image/webp"
                                                         style={{ display: 'none' }}
                                                         onChange={(e) => handleQuickImageUpload(p, e)}
                                                     />
-                                                    <IconButton
-                                                        component="span"
-                                                        size="small"
-                                                        color="primary"
-                                                        title="Upload / Change Photo"
-                                                    >
-                                                        <PhotoCameraIcon fontSize="small" />
-                                                    </IconButton>
+                                                    <Tooltip title="Quick upload / replace photo">
+                                                        <IconButton
+                                                            component="span"
+                                                            size="small"
+                                                            color="primary"
+                                                        >
+                                                            <PhotoCameraIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                 </label>
                                             </Box>
                                         </TableCell>
@@ -333,7 +479,9 @@ const Inventory = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="body2" fontWeight="bold">{p.name}</Typography>
-                                            <Typography variant="caption" color="textSecondary">{p.description}</Typography>
+                                            <Typography variant="caption" color="textSecondary" noWrap display="block" sx={{ maxWidth: 220 }}>
+                                                {p.description || '—'}
+                                            </Typography>
                                         </TableCell>
                                         <TableCell>
                                             <Chip
@@ -361,10 +509,20 @@ const Inventory = () => {
                                                 size="small"
                                                 variant="outlined"
                                                 startIcon={<EditIcon />}
+                                                sx={{ mr: 1 }}
                                                 onClick={() => handleOpenEditModal(p)}
                                             >
                                                 Edit
                                             </Button>
+                                            <Tooltip title="Delete Product">
+                                                <IconButton
+                                                    size="small"
+                                                    color="error"
+                                                    onClick={() => handleOpenDeleteModal(p)}
+                                                >
+                                                    <DeleteOutlineIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -380,47 +538,65 @@ const Inventory = () => {
                     <DialogTitle>{selectedProduct ? 'Edit Product & Photo' : 'Add New Product & Photo'}</DialogTitle>
                     <DialogContent dividers>
                         <Grid container spacing={2}>
-                            {/* Plate Photo Upload Card */}
+                            {/* Interactive Drag & Drop Product Image Uploader */}
                             <Grid item xs={12}>
+                                <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+                                    Product Image (Tenant Isolated)
+                                </Typography>
+                                {imageError && (
+                                    <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setImageError('')}>
+                                        {imageError}
+                                    </Alert>
+                                )}
                                 <Box
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
                                     sx={{
-                                        border: '2px dashed #b0bec5',
+                                        border: `2px dashed ${isDragging ? '#1976d2' : '#90caf9'}`,
                                         borderRadius: 2,
                                         p: 2.5,
                                         display: 'flex',
                                         flexDirection: { xs: 'column', sm: 'row' },
                                         alignItems: 'center',
                                         gap: 2.5,
-                                        bgcolor: '#fcfcfc',
+                                        bgcolor: isDragging ? '#e3f2fd' : '#fcfcfc',
+                                        transition: 'all 0.2s ease',
                                     }}
                                 >
+                                    {/* Thumbnail Preview Box */}
                                     <Avatar
                                         variant="rounded"
                                         src={imagePreview}
-                                        alt="Plate Preview"
+                                        alt="Product Preview"
                                         sx={{
-                                            width: 100,
-                                            height: 100,
-                                            bgcolor: '#e0e0e0',
-                                            border: '2px solid #cfd8dc',
+                                            width: 130,
+                                            height: 130,
+                                            bgcolor: '#e3f2fd',
+                                            border: '2px solid #bbdefb',
                                             boxShadow: 1,
                                         }}
                                     >
-                                        <RestaurantMenuIcon sx={{ fontSize: 50, color: '#90a4ae' }} />
+                                        <Inventory2OutlinedIcon sx={{ fontSize: 56, color: '#1976d2', opacity: 0.8 }} />
                                     </Avatar>
-                                    <Box flexGrow={1}>
-                                        <Typography variant="subtitle1" fontWeight="bold">
-                                            Plate / Product Photo
-                                        </Typography>
+
+                                    {/* Upload Trigger & Controls */}
+                                    <Box flexGrow={1} textAlign={{ xs: 'center', sm: 'left' }}>
+                                        <Box display="flex" alignItems="center" gap={1} justifyContent={{ xs: 'center', sm: 'flex-start' }} mb={0.5}>
+                                            <CloudUploadIcon color="primary" />
+                                            <Typography variant="subtitle1" fontWeight="bold">
+                                                Drag & drop product image or browse
+                                            </Typography>
+                                        </Box>
                                         <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1.5 }}>
-                                            Upload a clear photo of the plate so cashiers can quickly identify and tap it on the POS screen. Supports JPG, PNG, WEBP.
+                                            Supports JPG, PNG, WebP up to 5MB. Stored with tenant isolation.
                                         </Typography>
-                                        <Box display="flex" gap={1} alignItems="center">
+                                        <Box display="flex" gap={1} alignItems="center" justifyContent={{ xs: 'center', sm: 'flex-start' }}>
                                             <label htmlFor="product-photo-file-input">
                                                 <input
                                                     id="product-photo-file-input"
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept="image/jpeg,image/png,image/webp"
                                                     style={{ display: 'none' }}
                                                     onChange={handleFileChange}
                                                 />
@@ -430,7 +606,7 @@ const Inventory = () => {
                                                     startIcon={<PhotoCameraIcon />}
                                                     size="small"
                                                 >
-                                                    {imagePreview ? 'Change Photo' : 'Upload Plate Photo'}
+                                                    {imagePreview ? 'Change Image' : 'Select Image File'}
                                                 </Button>
                                             </label>
                                             {imagePreview && (
@@ -438,13 +614,9 @@ const Inventory = () => {
                                                     size="small"
                                                     color="error"
                                                     startIcon={<DeleteOutlineIcon />}
-                                                    onClick={() => {
-                                                        setSelectedImageFile(null);
-                                                        setImagePreview(null);
-                                                        setProductForm(prev => ({ ...prev, imageUrl: '' }));
-                                                    }}
+                                                    onClick={handleRemoveImage}
                                                 >
-                                                    Remove
+                                                    Remove Image
                                                 </Button>
                                             )}
                                         </Box>
@@ -471,7 +643,7 @@ const Inventory = () => {
                             </Grid>
                             <Grid item xs={12}>
                                 <TextField
-                                    label="Product / Plate Name"
+                                    label="Product Name"
                                     required
                                     fullWidth
                                     value={productForm.name}
@@ -531,7 +703,7 @@ const Inventory = () => {
                             </Grid>
                             <Grid item xs={12} sm={4}>
                                 <TextField
-                                    label="Unit (PCS, PLATE, BOWL, KG)"
+                                    label="Unit (PCS, BOWL, KG, METER)"
                                     required
                                     fullWidth
                                     value={productForm.unit}
@@ -547,6 +719,72 @@ const Inventory = () => {
                         </Button>
                     </DialogActions>
                 </form>
+            </Dialog>
+
+            {/* Click-to-Zoom Lightbox Modal Preview */}
+            <Dialog open={previewModalOpen} onClose={() => setPreviewModalOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="h6" fontWeight="bold">
+                            {selectedProduct?.name}
+                        </Typography>
+                        <Chip label={selectedProduct?.sku} size="small" color="primary" variant="outlined" />
+                    </Box>
+                    <IconButton size="small" onClick={() => setPreviewModalOpen(false)}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 0 }}>
+                    <Card elevation={0}>
+                        <CardMedia
+                            component="img"
+                            image={getImageUrl(selectedProduct?.imageUrl)}
+                            alt={selectedProduct?.name}
+                            sx={{
+                                maxHeight: 380,
+                                width: '100%',
+                                objectFit: 'contain',
+                                bgcolor: '#fafafa',
+                                p: 1
+                            }}
+                        />
+                    </Card>
+                    <Box p={2.5}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <Typography variant="caption" color="textSecondary">Selling Price</Typography>
+                                <Typography variant="h6" fontWeight="bold" color="primary.main">
+                                    Rs. {Number(selectedProduct?.sellingPrice || 0).toLocaleString()}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography variant="caption" color="textSecondary">Stock Available</Typography>
+                                <Typography variant="h6" fontWeight="bold">
+                                    {selectedProduct?.currentStock} {selectedProduct?.unit}
+                                </Typography>
+                            </Grid>
+                            {selectedProduct?.description && (
+                                <Grid item xs={12}>
+                                    <Typography variant="caption" color="textSecondary">Description</Typography>
+                                    <Typography variant="body2">{selectedProduct.description}</Typography>
+                                </Grid>
+                            )}
+                        </Grid>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setPreviewModalOpen(false)}>Close</Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<EditIcon />}
+                        onClick={() => {
+                            setPreviewModalOpen(false);
+                            if (selectedProduct) handleOpenEditModal(selectedProduct);
+                        }}
+                    >
+                        Edit Product
+                    </Button>
+                </DialogActions>
             </Dialog>
 
             {/* Restock Modal */}
@@ -623,6 +861,25 @@ const Inventory = () => {
                         </Button>
                     </DialogActions>
                 </form>
+            </Dialog>
+
+            {/* Confirm Delete Product Dialog */}
+            <Dialog open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Confirm Delete</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to delete product <strong>{productToDelete?.name}</strong>?
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                        This will remove the product and clean up its stored image file.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained">
+                        Delete
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Box>
     );

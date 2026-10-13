@@ -180,7 +180,7 @@ export class SeederService implements OnApplicationBootstrap {
           }),
         );
 
-        // Seed Sample Products
+        // Seed Sample Products with vibrant demo product images
         const sampleProducts = [
           {
             name: 'Wireless Optical Mouse',
@@ -191,6 +191,7 @@ export class SeederService implements OnApplicationBootstrap {
             currentStock: 45,
             reorderLevel: 10,
             unit: 'PCS',
+            imageUrl: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&q=80',
             categoryId: catRetail.id,
           },
           {
@@ -202,6 +203,7 @@ export class SeederService implements OnApplicationBootstrap {
             currentStock: 30,
             reorderLevel: 5,
             unit: 'PCS',
+            imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&q=80',
             categoryId: catRetail.id,
           },
           {
@@ -213,6 +215,7 @@ export class SeederService implements OnApplicationBootstrap {
             currentStock: 100,
             reorderLevel: 20,
             unit: 'PCS',
+            imageUrl: 'https://images.unsplash.com/photo-1609081219090-a6d8173087ec?w=400&q=80',
             categoryId: catRetail.id,
           },
           {
@@ -224,6 +227,7 @@ export class SeederService implements OnApplicationBootstrap {
             currentStock: 22,
             reorderLevel: 5,
             unit: 'PCS',
+            imageUrl: 'https://images.unsplash.com/photo-1588508065123-287b28e013da?w=400&q=80',
             categoryId: catRetail.id,
           },
         ];

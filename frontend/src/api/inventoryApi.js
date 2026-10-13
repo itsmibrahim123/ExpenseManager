@@ -18,6 +18,23 @@ export const updateProduct = (id, productData) => {
     return api.put(`/products/${id}`, productData);
 };
 
+export const deleteProduct = (id) => {
+    return api.delete(`/products/${id}`);
+};
+
+// Upload standalone product image (returns { imageUrl, filename })
+export const uploadImage = (file, productId = null) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (productId) {
+        formData.append('productId', productId);
+    }
+    return api.post('/products/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
+
+// Upload image specifically for a product
 export const uploadProductImage = (id, file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -26,12 +43,9 @@ export const uploadProductImage = (id, file) => {
     });
 };
 
-export const uploadImage = (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post('/products/upload-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    });
+// Delete image from a product
+export const deleteProductImage = (id) => {
+    return api.delete(`/products/${id}/image`);
 };
 
 export const restockProduct = (id, restockData) => {

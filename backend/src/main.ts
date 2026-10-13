@@ -16,9 +16,14 @@ async function bootstrap() {
     mkdirSync(uploadsDir, { recursive: true });
   }
 
-  // Serve static assets
+  // Serve static assets with caching headers and CORS allowance
   app.useStaticAssets(uploadsDir, {
     prefix: '/uploads/',
+    maxAge: 86400000,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    },
   });
 
   // Enable CORS for frontend

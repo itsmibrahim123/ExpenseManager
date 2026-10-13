@@ -1,13 +1,43 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { existsSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import { Product } from './entities/product.entity';
 import { StockMovement } from '../stock/entities/stock-movement.entity';
 import { TenantContext } from '../../common/context/tenant-context';
-import { CreateProductDto, RestockProductDto, StockAdjustmentDto } from './dto/product.dto';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  RestockProductDto,
+  StockAdjustmentDto,
+} from './dto/product.dto';
+
+/**
+ * Safely unlinks an uploaded file from disk if it exists inside the /uploads directory.
+ */
+export function deleteUploadedFileSafely(imageUrl?: string | null): void {
+  if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('/uploads/')) {
+    return;
+  }
+  try {
+    const cleanPath = imageUrl.replace(/^\/+/, ''); // uploads/tenants/...
+    const fullPath = join(process.cwd(), cleanPath);
+    const uploadsRoot = join(process.cwd(), 'uploads');
+
+    // Security check against path traversal
+    if (fullPath.startsWith(uploadsRoot) && existsSync(fullPath)) {
+      unlinkSync(fullPath);
+    }
+  } catch (err) {
+    Logger.warn(`Failed to unlink file for imageUrl ${imageUrl}: ${err.message}`, 'ProductsService');
+  }
+}
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
@@ -70,7 +100,10 @@ export class ProductsService {
       ...dto,
       tenantId,
       currentStock: dto.currentStock || 0,
-      reorderLevel: dto.reorderLevel ?? 5,
+      costPrice: dto.costPrice || 0,
+      sellingPrice: dto.sellingPrice || 0,
+      reorderLevel: dto.reorderLevel !== undefined ? dto.reorderLevel : 5,
+      unit: dto.unit || 'PCS',
       active: dto.active !== undefined ? dto.active : true,
     });
 
@@ -93,8 +126,14 @@ export class ProductsService {
     return this.getProductById(saved.id);
   }
 
-  async updateProduct(id: number, dto: Partial<CreateProductDto>): Promise<Product> {
+  async updateProduct(id: number, dto: UpdateProductDto): Promise<Product> {
     const product = await this.getProductById(id);
+
+    // If an image is being replaced or removed, clean up old file from disk
+    if (dto.imageUrl !== undefined && dto.imageUrl !== product.imageUrl && product.imageUrl) {
+      deleteUploadedFileSafely(product.imageUrl);
+    }
+
     Object.assign(product, dto);
     await this.productRepo.save(product);
     return this.getProductById(id);
@@ -102,9 +141,34 @@ export class ProductsService {
 
   async updateProductImage(id: number, imageUrl: string): Promise<Product> {
     const product = await this.getProductById(id);
+
+    // Clean up previous image file if it exists and differs
+    if (product.imageUrl && product.imageUrl !== imageUrl) {
+      deleteUploadedFileSafely(product.imageUrl);
+    }
+
     product.imageUrl = imageUrl;
     await this.productRepo.save(product);
     return this.getProductById(id);
+  }
+
+  async deleteProductImage(id: number): Promise<Product> {
+    const product = await this.getProductById(id);
+    if (product.imageUrl) {
+      deleteUploadedFileSafely(product.imageUrl);
+      product.imageUrl = null as any;
+      await this.productRepo.save(product);
+    }
+    return this.getProductById(id);
+  }
+
+  async deleteProduct(id: number): Promise<{ success: boolean; message: string }> {
+    const product = await this.getProductById(id);
+    if (product.imageUrl) {
+      deleteUploadedFileSafely(product.imageUrl);
+    }
+    await this.productRepo.remove(product);
+    return { success: true, message: `Product ${id} deleted successfully` };
   }
 
   async restockProduct(id: number, dto: RestockProductDto): Promise<Product> {

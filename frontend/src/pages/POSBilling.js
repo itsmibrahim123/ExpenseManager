@@ -98,11 +98,23 @@ const POSBilling = () => {
     };
 
     const handleQuickPhotoUpload = async (product, e) => {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0];
         if (!file) return;
+
+        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowed.includes(file.type.toLowerCase())) {
+            showAlert('Only JPG, PNG, and WebP images are allowed!', 'error');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            showAlert('Image size exceeds 5MB limit.', 'error');
+            return;
+        }
+
         try {
             await uploadProductImage(product.id, file);
-            showAlert(`Plate photo updated for ${product.name}!`);
+            showAlert(`Product photo updated for ${product.name}!`);
             fetchProducts(search);
         } catch (err) {
             showAlert(err.response?.data?.message || 'Failed to upload photo', 'error');
@@ -321,7 +333,7 @@ const POSBilling = () => {
                                                     <input
                                                         id={`pos-upload-${p.id}`}
                                                         type="file"
-                                                        accept="image/*"
+                                                        accept="image/jpeg,image/png,image/webp"
                                                         style={{ display: 'none' }}
                                                         onChange={(e) => handleQuickPhotoUpload(p, e)}
                                                     />
