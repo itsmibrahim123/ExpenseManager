@@ -3,7 +3,7 @@ import {
     Box, Typography, Grid, Paper, TextField, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Card, CardContent, CardActionArea,
     Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent,
-    DialogActions, Alert, Badge, ToggleButtonGroup, ToggleButton, Chip
+    DialogActions, Alert, Badge, ToggleButtonGroup, ToggleButton, Chip, Avatar
 } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import SearchIcon from '@mui/icons-material/Search';
@@ -13,12 +13,20 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PrintIcon from '@mui/icons-material/Print';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import { getProducts } from '../api/inventoryApi';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
+import { getProducts, uploadProductImage } from '../api/inventoryApi';
 import { getCustomers, createCustomer } from '../api/customerApi';
 import { createInvoice } from '../api/invoiceApi';
 import { getAccountsByUser } from '../api/accountsService';
 import { useAuth } from '../context/AuthContext';
 import ThermalReceipt from '../components/print/ThermalReceipt';
+
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 const POSBilling = () => {
     const { user } = useAuth();
@@ -89,6 +97,18 @@ const POSBilling = () => {
         fetchProducts(val);
     };
 
+    const handleQuickPhotoUpload = async (product, e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            await uploadProductImage(product.id, file);
+            showAlert(`Plate photo updated for ${product.name}!`);
+            fetchProducts(search);
+        } catch (err) {
+            showAlert(err.response?.data?.message || 'Failed to upload photo', 'error');
+        }
+    };
+
     const handleAddToCart = (product) => {
         if (product.currentStock <= 0) {
             showAlert(`Cannot add ${product.name}. Out of stock!`, 'error');
@@ -111,6 +131,7 @@ const POSBilling = () => {
                     productId: product.id,
                     productName: product.name,
                     productSku: product.sku,
+                    imageUrl: product.imageUrl,
                     unitPrice: product.sellingPrice,
                     quantity: 1,
                     currentStock: product.currentStock,
@@ -241,29 +262,105 @@ const POSBilling = () => {
                                             variant="outlined" 
                                             sx={{ 
                                                 opacity: isOut ? 0.6 : 1,
-                                                borderColor: p.isLowStock ? 'warning.main' : 'divider' 
+                                                borderColor: p.isLowStock ? 'warning.main' : 'divider',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                height: '100%',
+                                                transition: 'all 0.2s ease',
+                                                '&:hover': {
+                                                    boxShadow: isOut ? 'none' : 3,
+                                                    transform: isOut ? 'none' : 'translateY(-2px)'
+                                                }
                                             }}
                                         >
+                                            {/* Plate Photo Banner */}
+                                            <Box sx={{ position: 'relative', height: 110, width: '100%', bgcolor: '#f5f5f5', overflow: 'hidden' }}>
+                                                {p.imageUrl ? (
+                                                    <Box
+                                                        component="img"
+                                                        src={getImageUrl(p.imageUrl)}
+                                                        alt={p.name}
+                                                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    <Box
+                                                        display="flex"
+                                                        flexDirection="column"
+                                                        alignItems="center"
+                                                        justifyContent="center"
+                                                        height="100%"
+                                                        color="text.secondary"
+                                                    >
+                                                        <RestaurantMenuIcon sx={{ fontSize: 36, opacity: 0.35, mb: 0.5 }} />
+                                                        <Typography variant="caption" sx={{ fontSize: '0.65rem', opacity: 0.6 }}>No Photo</Typography>
+                                                    </Box>
+                                                )}
+
+                                                {/* Stock Status Badge */}
+                                                <Chip 
+                                                    label={isOut ? 'Out' : `${p.currentStock} ${p.unit}`}
+                                                    size="small"
+                                                    color={isOut ? 'error' : (p.isLowStock ? 'warning' : 'primary')}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 6,
+                                                        right: 6,
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.65rem',
+                                                        height: 20,
+                                                        boxShadow: 1
+                                                    }}
+                                                />
+
+                                                {/* Quick Upload Plate Photo for Cashier */}
+                                                <label
+                                                    htmlFor={`pos-upload-${p.id}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ position: 'absolute', top: 6, left: 6 }}
+                                                >
+                                                    <input
+                                                        id={`pos-upload-${p.id}`}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={(e) => handleQuickPhotoUpload(p, e)}
+                                                    />
+                                                    <IconButton
+                                                        component="span"
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: 'rgba(255,255,255,0.85)',
+                                                            '&:hover': { bgcolor: 'white' },
+                                                            p: 0.5,
+                                                            boxShadow: 1
+                                                        }}
+                                                        title="Upload / Change Plate Photo"
+                                                    >
+                                                        <PhotoCameraIcon sx={{ fontSize: 16, color: '#455a64' }} />
+                                                    </IconButton>
+                                                </label>
+                                            </Box>
+
                                             <CardActionArea 
                                                 onClick={() => handleAddToCart(p)}
                                                 disabled={isOut}
-                                                sx={{ p: 1.5 }}
+                                                sx={{ p: 1.2, flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between' }}
                                             >
-                                                <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
-                                                    {p.sku}
-                                                </Typography>
-                                                <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                                                    {p.name}
-                                                </Typography>
-                                                <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
+                                                <Box width="100%">
+                                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
+                                                        {p.sku}
+                                                    </Typography>
+                                                    <Typography variant="subtitle2" fontWeight="bold" noWrap title={p.name} sx={{ width: '100%' }}>
+                                                        {p.name}
+                                                    </Typography>
+                                                </Box>
+                                                <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" mt={0.5}>
                                                     <Typography variant="body2" color="primary.main" fontWeight="bold">
                                                         Rs. {Number(p.sellingPrice).toLocaleString()}
                                                     </Typography>
-                                                    <Chip 
-                                                        label={isOut ? 'Out' : `${p.currentStock} ${p.unit}`}
-                                                        size="small"
-                                                        color={isOut ? 'error' : (p.isLowStock ? 'warning' : 'default')}
-                                                    />
+                                                    <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
+                                                        Tap to Add
+                                                    </Typography>
                                                 </Box>
                                             </CardActionArea>
                                         </Card>
@@ -340,8 +437,20 @@ const POSBilling = () => {
                                         cart.map(item => (
                                             <TableRow key={item.productId}>
                                                 <TableCell sx={{ py: 0.5 }}>
-                                                    <Typography variant="body2" fontWeight="bold">{item.productName}</Typography>
-                                                    <Typography variant="caption" color="textSecondary">@ Rs.{item.unitPrice}</Typography>
+                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                        <Avatar
+                                                            variant="rounded"
+                                                            src={getImageUrl(item.imageUrl)}
+                                                            alt={item.productName}
+                                                            sx={{ width: 34, height: 34, bgcolor: '#f0f2f5', border: '1px solid #e0e0e0' }}
+                                                        >
+                                                            <RestaurantMenuIcon sx={{ fontSize: 18, color: '#9e9e9e' }} />
+                                                        </Avatar>
+                                                        <Box>
+                                                            <Typography variant="body2" fontWeight="bold">{item.productName}</Typography>
+                                                            <Typography variant="caption" color="textSecondary">@ Rs.{item.unitPrice}</Typography>
+                                                        </Box>
+                                                    </Box>
                                                 </TableCell>
                                                 <TableCell align="center" sx={{ py: 0.5 }}>
                                                     <Box display="flex" alignItems="center" justifyContent="center">

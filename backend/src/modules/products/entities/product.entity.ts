@@ -58,6 +58,9 @@ export class Product extends BaseTenantEntity {
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
+  @Column({ name: 'image_url', nullable: true })
+  imageUrl: string;
+
   @Column({ default: true })
   active: boolean;
 }

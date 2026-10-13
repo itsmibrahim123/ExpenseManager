@@ -18,6 +18,22 @@ export const updateProduct = (id, productData) => {
     return api.put(`/products/${id}`, productData);
 };
 
+export const uploadProductImage = (id, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/products/${id}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
+
+export const uploadImage = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/products/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
+
 export const restockProduct = (id, restockData) => {
     return api.post(`/products/${id}/restock`, restockData);
 };

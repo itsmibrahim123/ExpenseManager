@@ -100,6 +100,13 @@ export class ProductsService {
     return this.getProductById(id);
   }
 
+  async updateProductImage(id: number, imageUrl: string): Promise<Product> {
+    const product = await this.getProductById(id);
+    product.imageUrl = imageUrl;
+    await this.productRepo.save(product);
+    return this.getProductById(id);
+  }
+
   async restockProduct(id: number, dto: RestockProductDto): Promise<Product> {
     const product = await this.getProductById(id);
     const newStock = product.currentStock + dto.quantity;

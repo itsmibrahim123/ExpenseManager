@@ -2,16 +2,33 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, TextField, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
-    Grid, FormControlLabel, Switch, MenuItem, Select, InputLabel, FormControl, Alert, CircularProgress
+    Grid, FormControlLabel, Switch, MenuItem, Select, InputLabel, FormControl, Alert, CircularProgress,
+    Avatar, IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
-import { getProducts, createProduct, updateProduct, restockProduct } from '../api/inventoryApi';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import {
+    getProducts,
+    createProduct,
+    updateProduct,
+    restockProduct,
+    uploadProductImage,
+    uploadImage
+} from '../api/inventoryApi';
 import { getAccountsByUser } from '../api/accountsService';
 import { useAuth } from '../context/AuthContext';
+
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 const Inventory = () => {
     const { user } = useAuth();
@@ -27,10 +44,15 @@ const Inventory = () => {
     const [restockModalOpen, setRestockModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
 
+    // Image Upload State
+    const [selectedImageFile, setSelectedImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [savingProduct, setSavingProduct] = useState(false);
+
     // Forms
     const [productForm, setProductForm] = useState({
         sku: '', barcode: '', name: '', description: '', costPrice: '', sellingPrice: '',
-        currentStock: 0, reorderLevel: 5, unit: 'PCS', active: true
+        currentStock: 0, reorderLevel: 5, unit: 'PCS', active: true, imageUrl: ''
     });
 
     const [restockForm, setRestockForm] = useState({
@@ -63,16 +85,20 @@ const Inventory = () => {
 
     const handleOpenCreateModal = () => {
         setSelectedProduct(null);
+        setSelectedImageFile(null);
+        setImagePreview(null);
         setProductForm({
             sku: 'SKU-' + Math.floor(1000 + Math.random() * 9000),
             barcode: '', name: '', description: '', costPrice: '', sellingPrice: '',
-            currentStock: 0, reorderLevel: 5, unit: 'PCS', active: true
+            currentStock: 0, reorderLevel: 5, unit: 'PCS', active: true, imageUrl: ''
         });
         setProductModalOpen(true);
     };
 
     const handleOpenEditModal = (product) => {
         setSelectedProduct(product);
+        setSelectedImageFile(null);
+        setImagePreview(product.imageUrl ? getImageUrl(product.imageUrl) : null);
         setProductForm({
             sku: product.sku,
             barcode: product.barcode || '',
@@ -83,9 +109,30 @@ const Inventory = () => {
             currentStock: product.currentStock,
             reorderLevel: product.reorderLevel,
             unit: product.unit || 'PCS',
-            active: product.active
+            active: product.active,
+            imageUrl: product.imageUrl || ''
         });
         setProductModalOpen(true);
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleQuickImageUpload = async (product, e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            await uploadProductImage(product.id, file);
+            showAlert(`Photo uploaded for ${product.name}!`);
+            fetchProducts();
+        } catch (err) {
+            showAlert(err.response?.data?.message || 'Failed to upload photo', 'error');
+        }
     };
 
     const handleOpenRestockModal = (product) => {
@@ -102,18 +149,31 @@ const Inventory = () => {
 
     const handleSaveProduct = async (e) => {
         e.preventDefault();
+        setSavingProduct(true);
         try {
             if (selectedProduct) {
+                // If editing existing product
                 await updateProduct(selectedProduct.id, productForm);
+                if (selectedImageFile) {
+                    await uploadProductImage(selectedProduct.id, selectedImageFile);
+                }
                 showAlert('Product updated successfully!');
             } else {
-                await createProduct(productForm);
-                showAlert('Product created successfully!');
+                // If creating new product
+                let finalImageUrl = productForm.imageUrl;
+                if (selectedImageFile) {
+                    const uploadRes = await uploadImage(selectedImageFile);
+                    finalImageUrl = uploadRes.data?.imageUrl;
+                }
+                await createProduct({ ...productForm, imageUrl: finalImageUrl });
+                showAlert('Product created successfully with photo!');
             }
             setProductModalOpen(false);
             fetchProducts();
         } catch (err) {
             showAlert(err.response?.data?.message || 'Error saving product', 'error');
+        } finally {
+            setSavingProduct(false);
         }
     };
 
@@ -139,7 +199,7 @@ const Inventory = () => {
                 <Box display="flex" alignItems="center" gap={1}>
                     <InventoryIcon color="primary" sx={{ fontSize: 32 }} />
                     <Typography variant="h4" fontWeight="bold">
-                        Product & Inventory Management
+                        Product & Plate Management
                     </Typography>
                 </Box>
                 <Button
@@ -148,7 +208,7 @@ const Inventory = () => {
                     onClick={handleOpenCreateModal}
                     size="large"
                 >
-                    Add New Product
+                    Add New Product / Plate
                 </Button>
             </Box>
 
@@ -193,6 +253,7 @@ const Inventory = () => {
                 <Table>
                     <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
                         <TableRow>
+                            <TableCell><strong>Plate Photo</strong></TableCell>
                             <TableCell><strong>SKU / Barcode</strong></TableCell>
                             <TableCell><strong>Product Name</strong></TableCell>
                             <TableCell><strong>Stock Status</strong></TableCell>
@@ -204,13 +265,13 @@ const Inventory = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                                     <CircularProgress />
                                 </TableCell>
                             </TableRow>
                         ) : products.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                                     No products found in inventory.
                                 </TableCell>
                             </TableRow>
@@ -228,6 +289,40 @@ const Inventory = () => {
 
                                 return (
                                     <TableRow key={p.id} hover>
+                                        <TableCell>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Avatar
+                                                    variant="rounded"
+                                                    src={getImageUrl(p.imageUrl)}
+                                                    alt={p.name}
+                                                    sx={{
+                                                        width: 52,
+                                                        height: 52,
+                                                        bgcolor: '#f5f5f5',
+                                                        border: '1px solid #e0e0e0',
+                                                    }}
+                                                >
+                                                    <RestaurantMenuIcon color="action" />
+                                                </Avatar>
+                                                <label htmlFor={`quick-upload-${p.id}`}>
+                                                    <input
+                                                        id={`quick-upload-${p.id}`}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={(e) => handleQuickImageUpload(p, e)}
+                                                    />
+                                                    <IconButton
+                                                        component="span"
+                                                        size="small"
+                                                        color="primary"
+                                                        title="Upload / Change Photo"
+                                                    >
+                                                        <PhotoCameraIcon fontSize="small" />
+                                                    </IconButton>
+                                                </label>
+                                            </Box>
+                                        </TableCell>
                                         <TableCell>
                                             <Typography variant="body2" fontWeight="bold">{p.sku}</Typography>
                                             {p.barcode && (
@@ -282,9 +377,81 @@ const Inventory = () => {
             {/* Product Add/Edit Modal */}
             <Dialog open={productModalOpen} onClose={() => setProductModalOpen(false)} maxWidth="md" fullWidth>
                 <form onSubmit={handleSaveProduct}>
-                    <DialogTitle>{selectedProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+                    <DialogTitle>{selectedProduct ? 'Edit Product & Photo' : 'Add New Product & Photo'}</DialogTitle>
                     <DialogContent dividers>
                         <Grid container spacing={2}>
+                            {/* Plate Photo Upload Card */}
+                            <Grid item xs={12}>
+                                <Box
+                                    sx={{
+                                        border: '2px dashed #b0bec5',
+                                        borderRadius: 2,
+                                        p: 2.5,
+                                        display: 'flex',
+                                        flexDirection: { xs: 'column', sm: 'row' },
+                                        alignItems: 'center',
+                                        gap: 2.5,
+                                        bgcolor: '#fcfcfc',
+                                    }}
+                                >
+                                    <Avatar
+                                        variant="rounded"
+                                        src={imagePreview}
+                                        alt="Plate Preview"
+                                        sx={{
+                                            width: 100,
+                                            height: 100,
+                                            bgcolor: '#e0e0e0',
+                                            border: '2px solid #cfd8dc',
+                                            boxShadow: 1,
+                                        }}
+                                    >
+                                        <RestaurantMenuIcon sx={{ fontSize: 50, color: '#90a4ae' }} />
+                                    </Avatar>
+                                    <Box flexGrow={1}>
+                                        <Typography variant="subtitle1" fontWeight="bold">
+                                            Plate / Product Photo
+                                        </Typography>
+                                        <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1.5 }}>
+                                            Upload a clear photo of the plate so cashiers can quickly identify and tap it on the POS screen. Supports JPG, PNG, WEBP.
+                                        </Typography>
+                                        <Box display="flex" gap={1} alignItems="center">
+                                            <label htmlFor="product-photo-file-input">
+                                                <input
+                                                    id="product-photo-file-input"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: 'none' }}
+                                                    onChange={handleFileChange}
+                                                />
+                                                <Button
+                                                    variant="outlined"
+                                                    component="span"
+                                                    startIcon={<PhotoCameraIcon />}
+                                                    size="small"
+                                                >
+                                                    {imagePreview ? 'Change Photo' : 'Upload Plate Photo'}
+                                                </Button>
+                                            </label>
+                                            {imagePreview && (
+                                                <Button
+                                                    size="small"
+                                                    color="error"
+                                                    startIcon={<DeleteOutlineIcon />}
+                                                    onClick={() => {
+                                                        setSelectedImageFile(null);
+                                                        setImagePreview(null);
+                                                        setProductForm(prev => ({ ...prev, imageUrl: '' }));
+                                                    }}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </Grid>
+
                             <Grid item xs={12} sm={6}>
                                 <TextField
                                     label="SKU Code"
@@ -304,7 +471,7 @@ const Inventory = () => {
                             </Grid>
                             <Grid item xs={12}>
                                 <TextField
-                                    label="Product Name"
+                                    label="Product / Plate Name"
                                     required
                                     fullWidth
                                     value={productForm.name}
@@ -347,7 +514,7 @@ const Inventory = () => {
                                     type="number"
                                     required
                                     fullWidth
-                                    disabled={!!selectedProduct} // Use Restock modal to adjust stock
+                                    disabled={!!selectedProduct}
                                     value={productForm.currentStock}
                                     onChange={(e) => setProductForm({ ...productForm, currentStock: parseInt(e.target.value) || 0 })}
                                 />
@@ -364,7 +531,7 @@ const Inventory = () => {
                             </Grid>
                             <Grid item xs={12} sm={4}>
                                 <TextField
-                                    label="Unit (PCS, KG, BOX)"
+                                    label="Unit (PCS, PLATE, BOWL, KG)"
                                     required
                                     fullWidth
                                     value={productForm.unit}
@@ -375,7 +542,9 @@ const Inventory = () => {
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => setProductModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained">Save Product</Button>
+                        <Button type="submit" variant="contained" disabled={savingProduct}>
+                            {savingProduct ? 'Saving...' : 'Save Product'}
+                        </Button>
                     </DialogActions>
                 </form>
             </Dialog>
@@ -388,22 +557,22 @@ const Inventory = () => {
                     </DialogTitle>
                     <DialogContent dividers>
                         <Alert severity="info" sx={{ mb: 2 }}>
-                            Restocking automatically logs an <strong>EXPENSE</strong> transaction against your selected account for total purchase cost.
+                            Restocking records an expense against your store's account and updates stock levels immediately.
                         </Alert>
                         <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Restock Quantity"
+                                    label="Quantity to Add"
                                     type="number"
                                     required
                                     fullWidth
                                     value={restockForm.quantity}
-                                    onChange={(e) => setRestockForm({ ...restockForm, quantity: parseInt(e.target.value) || 1 })}
+                                    onChange={(e) => setRestockForm({ ...restockForm, quantity: parseInt(e.target.value) || 0 })}
                                 />
                             </Grid>
                             <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Unit Cost Price (PKR)"
+                                    label="Unit Cost Price"
                                     type="number"
                                     required
                                     fullWidth
@@ -413,15 +582,15 @@ const Inventory = () => {
                             </Grid>
                             <Grid item xs={12}>
                                 <FormControl fullWidth required>
-                                    <InputLabel>Payment Source Account</InputLabel>
+                                    <InputLabel>Pay from Account</InputLabel>
                                     <Select
                                         value={restockForm.accountId}
-                                        label="Payment Source Account"
+                                        label="Pay from Account"
                                         onChange={(e) => setRestockForm({ ...restockForm, accountId: e.target.value })}
                                     >
-                                        {accounts.map((acc) => (
+                                        {accounts.map(acc => (
                                             <MenuItem key={acc.id} value={acc.id}>
-                                                {acc.name} (Balance: Rs. {Number(acc.currentBalance).toLocaleString()})
+                                                {acc.name} ({acc.type}) - Balance: Rs. {acc.currentBalance}
                                             </MenuItem>
                                         ))}
                                     </Select>
@@ -429,23 +598,28 @@ const Inventory = () => {
                             </Grid>
                             <Grid item xs={12}>
                                 <TextField
-                                    label="Supplier Invoice / PO Ref"
+                                    label="Supplier Invoice / Reference"
                                     fullWidth
                                     value={restockForm.referenceId}
                                     onChange={(e) => setRestockForm({ ...restockForm, referenceId: e.target.value })}
                                 />
                             </Grid>
                             <Grid item xs={12}>
-                                <Typography variant="subtitle2" sx={{ mt: 1, fontWeight: 'bold', color: 'error.main' }}>
-                                    Total Purchase Cost: Rs. {(Number(restockForm.unitCostPrice || 0) * Number(restockForm.quantity || 0)).toLocaleString()}
-                                </Typography>
+                                <TextField
+                                    label="Notes"
+                                    fullWidth
+                                    multiline
+                                    rows={2}
+                                    value={restockForm.notes}
+                                    onChange={(e) => setRestockForm({ ...restockForm, notes: e.target.value })}
+                                />
                             </Grid>
                         </Grid>
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => setRestockModalOpen(false)}>Cancel</Button>
                         <Button type="submit" variant="contained" color="success">
-                            Confirm Restock & Pay Expense
+                            Confirm Restock
                         </Button>
                     </DialogActions>
                 </form>

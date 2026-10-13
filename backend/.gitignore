@@ -17,3 +17,7 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+
+# Uploads
+/uploads/*
+!/uploads/.gitkeep
