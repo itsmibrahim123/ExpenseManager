@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Grid, Paper, TextField, Button, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, IconButton, Card, CardContent, CardActionArea,
+    TableContainer, TableHead, TableRow, IconButton, Card, CardActionArea,
     Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent,
-    DialogActions, Alert, Badge, ToggleButtonGroup, ToggleButton, Chip, Avatar
+    DialogActions, Alert, ToggleButtonGroup, ToggleButton, Chip, Avatar
 } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import SearchIcon from '@mui/icons-material/Search';
