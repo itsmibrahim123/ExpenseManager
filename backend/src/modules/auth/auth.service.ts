@@ -22,7 +22,14 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto) {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const rawInput = loginDto.email ? loginDto.email.trim().toLowerCase() : '';
+    let user = await this.usersService.findByEmail(rawInput);
+
+    // Support username aliases for superadmin login
+    if (!user && (rawInput === 'admin' || rawInput === 'superadmin' || rawInput === 'superadmin@erp.com')) {
+      user = await this.usersService.findByEmail('admin@saas.com');
+    }
+
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }

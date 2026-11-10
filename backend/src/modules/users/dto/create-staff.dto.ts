@@ -1,4 +1,5 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { UserRole } from '../entities/user.entity';
 
 export class CreateStaffDto {
@@ -8,6 +9,7 @@ export class CreateStaffDto {
 
   @IsEmail()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
   email: string;
 
   @IsString()

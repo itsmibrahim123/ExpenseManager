@@ -13,18 +13,18 @@ const Login = () => {
     const onSubmit = async (data) => {
         try {
             setServerError('');
-            await login(data.email, data.password);
+            const cleanEmail = (data.email || '').trim();
+            await login(cleanEmail, data.password);
             navigate('/');
         } catch (error) {
             console.error("Login Error:", error);
             if (error.response) {
-                // Server responded with a status code that falls out of the range of 2xx
-                setServerError(error.response.data?.message || `Login failed (${error.response.status})`);
+                const msg = error.response.data?.message;
+                const formattedMsg = Array.isArray(msg) ? msg.join(', ') : msg;
+                setServerError(formattedMsg || `Login failed (${error.response.status})`);
             } else if (error.request) {
-                // The request was made but no response was received
                 setServerError('No response from server. Please ensure the backend is running.');
             } else {
-                // Something happened in setting up the request that triggered an Error
                 setServerError('Error setting up request: ' + error.message);
             }
         }
