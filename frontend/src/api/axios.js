@@ -4,9 +4,7 @@ const BASE_URL = 'http://localhost:8080';
 
 const api = axios.create({
     baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    timeout: 25000,
 });
 
 api.interceptors.request.use(
@@ -15,9 +13,16 @@ api.interceptors.request.use(
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
-        // When sending FormData, delete Content-Type so browser sets multipart/form-data with the correct boundary
+        // When sending FormData, ensure Content-Type is deleted so browser sets multipart/form-data with boundary
         if (config.data instanceof FormData) {
-            delete config.headers['Content-Type'];
+            if (config.headers && typeof config.headers.delete === 'function') {
+                config.headers.delete('Content-Type');
+                config.headers.delete('content-type');
+            }
+            if (config.headers) {
+                delete config.headers['Content-Type'];
+                delete config.headers['content-type'];
+            }
         }
         return config;
     },

@@ -210,11 +210,20 @@ const Inventory = () => {
         }
     };
 
+    const handleCloseProductModal = () => {
+        setProductModalOpen(false);
+        setSavingProduct(false);
+        setSelectedImageFile(null);
+        setImagePreview(null);
+        setImageError('');
+    };
+
     const handleOpenCreateModal = () => {
         setSelectedProduct(null);
         setSelectedImageFile(null);
         setImagePreview(null);
         setImageError('');
+        setSavingProduct(false);
         setProductForm({
             sku: 'SKU-' + Math.floor(1000 + Math.random() * 9000),
             barcode: '', name: '', description: '', costPrice: '', sellingPrice: '',
@@ -228,17 +237,18 @@ const Inventory = () => {
         setSelectedImageFile(null);
         setImagePreview(product.imageUrl ? getImageUrl(product.imageUrl) : null);
         setImageError('');
+        setSavingProduct(false);
         setProductForm({
-            sku: product.sku,
+            sku: product.sku || '',
             barcode: product.barcode || '',
-            name: product.name,
+            name: product.name || '',
             description: product.description || '',
-            costPrice: product.costPrice,
-            sellingPrice: product.sellingPrice,
-            currentStock: product.currentStock,
-            reorderLevel: product.reorderLevel,
+            costPrice: product.costPrice !== undefined && product.costPrice !== null ? product.costPrice : '',
+            sellingPrice: product.sellingPrice !== undefined && product.sellingPrice !== null ? product.sellingPrice : '',
+            currentStock: product.currentStock !== undefined && product.currentStock !== null ? product.currentStock : 0,
+            reorderLevel: product.reorderLevel !== undefined && product.reorderLevel !== null ? product.reorderLevel : 5,
             unit: product.unit || 'PCS',
-            active: product.active,
+            active: product.active !== undefined ? product.active : true,
             imageUrl: product.imageUrl || ''
         });
         setProductModalOpen(true);
@@ -307,7 +317,7 @@ const Inventory = () => {
     };
 
     const handleSaveProduct = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         setSavingProduct(true);
         try {
             const parseNum = (val, fallback = 0) => {
@@ -334,13 +344,18 @@ const Inventory = () => {
                 // If editing existing product
                 let updatedImageUrl = productForm.imageUrl;
 
-                // If user selected a new image file, upload it first
+                // If user selected a new image file, upload it
                 if (selectedImageFile) {
-                    const uploadRes = await uploadImage(selectedImageFile);
-                    updatedImageUrl = uploadRes.data?.imageUrl || updatedImageUrl;
+                    try {
+                        const uploadRes = await uploadImage(selectedImageFile);
+                        updatedImageUrl = uploadRes.data?.imageUrl || updatedImageUrl;
+                    } catch (uploadErr) {
+                        console.error('Image upload failed during product edit:', uploadErr);
+                        showAlert('Product saved, but photo upload encountered an issue.', 'warning');
+                    }
                 } else if (!imagePreview && selectedProduct.imageUrl) {
                     // User explicitly removed previous image
-                    await deleteProductImage(selectedProduct.id);
+                    await deleteProductImage(selectedProduct.id).catch(() => {});
                     updatedImageUrl = '';
                 }
 
@@ -354,15 +369,20 @@ const Inventory = () => {
                 // If creating new product
                 let finalImageUrl = productForm.imageUrl;
                 if (selectedImageFile) {
-                    const uploadRes = await uploadImage(selectedImageFile);
-                    finalImageUrl = uploadRes.data?.imageUrl || finalImageUrl;
+                    try {
+                        const uploadRes = await uploadImage(selectedImageFile);
+                        finalImageUrl = uploadRes.data?.imageUrl || finalImageUrl;
+                    } catch (uploadErr) {
+                        console.error('Image upload failed during product create:', uploadErr);
+                    }
                 }
                 await createProduct({ ...cleanPayload, imageUrl: finalImageUrl });
                 showAlert('Product created successfully with image!');
             }
-            setProductModalOpen(false);
+            handleCloseProductModal();
             fetchProducts();
         } catch (err) {
+            console.error('handleSaveProduct error:', err);
             showAlert(err.response?.data?.message || err.message || 'Error saving product', 'error');
         } finally {
             setSavingProduct(false);
@@ -654,7 +674,7 @@ const Inventory = () => {
             </TableContainer>
 
             {/* Product Add/Edit Modal */}
-            <Dialog open={productModalOpen} onClose={() => setProductModalOpen(false)} maxWidth="md" fullWidth>
+            <Dialog open={productModalOpen} onClose={handleCloseProductModal} maxWidth="md" fullWidth>
                 <form onSubmit={handleSaveProduct}>
                     <DialogTitle>{selectedProduct ? 'Edit Product & Photo' : 'Add New Product & Photo'}</DialogTitle>
                     <DialogContent dividers>
@@ -834,7 +854,7 @@ const Inventory = () => {
                         </Grid>
                     </DialogContent>
                     <DialogActions sx={{ px: 3, pb: 2 }}>
-                        <Button onClick={() => setProductModalOpen(false)} disabled={savingProduct}>
+                        <Button onClick={handleCloseProductModal} disabled={savingProduct}>
                             Cancel
                         </Button>
                         <Button

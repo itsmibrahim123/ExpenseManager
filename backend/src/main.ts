@@ -34,6 +34,21 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Global HTTP Request Logger
+  app.use((req: any, res: any, next: any) => {
+    const start = Date.now();
+    logger.log(`--> INCOMING: ${req.method} ${req.originalUrl}`);
+    res.on('finish', () => {
+      logger.log(`<-- OUTGOING: ${req.method} ${req.originalUrl} - ${res.statusCode} (${Date.now() - start}ms)`);
+    });
+    res.on('close', () => {
+      if (!res.writableEnded) {
+        logger.error(`<!- CONNECTION CLOSED EARLY: ${req.method} ${req.originalUrl} after ${Date.now() - start}ms`);
+      }
+    });
+    next();
+  });
+
   // Global Validation Pipe
   app.useGlobalPipes(
     new ValidationPipe({
