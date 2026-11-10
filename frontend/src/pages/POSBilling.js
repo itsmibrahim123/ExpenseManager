@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box, Typography, Grid, Paper, TextField, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Card, CardActionArea,
     Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent,
-    DialogActions, Alert, ToggleButtonGroup, ToggleButton, Chip, Avatar
+    DialogActions, Alert, Chip, Tooltip, Divider
 } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import SearchIcon from '@mui/icons-material/Search';
@@ -13,9 +13,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PrintIcon from '@mui/icons-material/Print';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-import { getProducts, uploadProductImage } from '../api/inventoryApi';
+import { getProducts } from '../api/inventoryApi';
 import { getCustomers, createCustomer } from '../api/customerApi';
 import { createInvoice } from '../api/invoiceApi';
 import { getAccountsByUser } from '../api/accountsService';
@@ -46,22 +49,167 @@ const POSBilling = () => {
     // Modals
     const [receiptModalOpen, setReceiptModalOpen] = useState(false);
     const [completedInvoice, setCompletedInvoice] = useState(null);
-
     const [customerModalOpen, setCustomerModalOpen] = useState(false);
     const [customerForm, setCustomerForm] = useState({ name: '', phone: '', email: '', address: '' });
+    const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
+
+    // Refs
+    const searchInputRef = useRef(null);
+    const videoRef = useRef(null);
+    const scannerStreamRef = useRef(null);
+    const scanBufferRef = useRef('');
+    const lastKeyTimeRef = useRef(0);
 
     useEffect(() => {
         fetchProducts();
         fetchCustomers();
         if (user) {
-            getAccountsByUser(user.id).then(res => {
+            getAccountsByUser(user.id || user.userId).then((res) => {
                 setAccounts(res.data || []);
                 if (res.data && res.data.length > 0) {
                     setSelectedAccountId(res.data[0].id);
                 }
             }).catch(() => {});
         }
-    }, []);
+    }, [user]);
+
+    // Global Keyboard Listener for USB/Bluetooth Barcode Scanners & Shortcuts (F2, F4, Space)
+    useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            const isTypingInInput = activeTag === 'input' || activeTag === 'textarea';
+
+            // Shortcut F2: Focus Product Search
+            if (e.key === 'F2') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+                return;
+            }
+
+            // Shortcut F4: Clear Cart
+            if (e.key === 'F4') {
+                e.preventDefault();
+                if (cart.length > 0) {
+                    setCart([]);
+                    showAlert('Cart cleared (F4)', 'info');
+                }
+                return;
+            }
+
+            // Shortcut Space: Quick Cash Tender (only when not typing in text field)
+            if (e.code === 'Space' && !isTypingInInput) {
+                e.preventDefault();
+                if (cart.length > 0) {
+                    handleCheckout();
+                }
+                return;
+            }
+
+            // Hardware Barcode Scanner Processing (rapid keystrokes ending in Enter)
+            const currentTime = Date.now();
+            const timeDiff = currentTime - lastKeyTimeRef.current;
+            lastKeyTimeRef.current = currentTime;
+
+            // Scanners emit characters rapidly (< 60ms between characters)
+            if (e.key === 'Enter') {
+                const scannedCode = scanBufferRef.current.trim();
+                scanBufferRef.current = '';
+
+                if (scannedCode.length >= 3) {
+                    // Try to match product by barcode or SKU
+                    const matched = products.find(
+                        (p) =>
+                            (p.barcode && p.barcode.toLowerCase() === scannedCode.toLowerCase()) ||
+                            (p.sku && p.sku.toLowerCase() === scannedCode.toLowerCase())
+                    );
+
+                    if (matched) {
+                        e.preventDefault();
+                        handleAddToCart(matched);
+                        showAlert(`Scanned barcode: ${matched.name}`, 'success');
+                    }
+                }
+            } else if (e.key.length === 1) {
+                // If elapsed time since last key is large, reset buffer (it was human typing)
+                if (timeDiff > 100) {
+                    scanBufferRef.current = '';
+                }
+                scanBufferRef.current += e.key;
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [products, cart]);
+
+    // Camera Barcode Scanning using native BarcodeDetector or fallback video loop
+    useEffect(() => {
+        if (!cameraScannerOpen) {
+            if (scannerStreamRef.current) {
+                scannerStreamRef.current.getTracks().forEach((track) => track.stop());
+                scannerStreamRef.current = null;
+            }
+            return;
+        }
+
+        let isScanning = true;
+
+        const startCamera = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                });
+                scannerStreamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    await videoRef.current.play();
+                }
+
+                // If native BarcodeDetector is supported in browser
+                if ('BarcodeDetector' in window) {
+                    const detector = new window.BarcodeDetector({
+                        formats: ['code_128', 'ean_13', 'ean_8', 'qr_code', 'upc_a', 'upc_e'],
+                    });
+
+                    const detectInterval = setInterval(async () => {
+                        if (!isScanning || !videoRef.current) {
+                            clearInterval(detectInterval);
+                            return;
+                        }
+                        try {
+                            const barcodes = await detector.detect(videoRef.current);
+                            if (barcodes.length > 0) {
+                                const rawVal = barcodes[0].rawValue;
+                                const matched = products.find(
+                                    (p) =>
+                                        (p.barcode && p.barcode === rawVal) ||
+                                        (p.sku && p.sku === rawVal)
+                                );
+                                if (matched) {
+                                    handleAddToCart(matched);
+                                    showAlert(`Camera scanned: ${matched.name}`, 'success');
+                                    setCameraScannerOpen(false);
+                                    clearInterval(detectInterval);
+                                }
+                            }
+                        } catch (err) {}
+                    }, 400);
+                }
+            } catch (err) {
+                showAlert('Could not access camera for scanning. Please check permissions.', 'error');
+            }
+        };
+
+        startCamera();
+
+        return () => {
+            isScanning = false;
+            if (scannerStreamRef.current) {
+                scannerStreamRef.current.getTracks().forEach((track) => track.stop());
+                scannerStreamRef.current = null;
+            }
+        };
+    }, [cameraScannerOpen, products]);
 
     const fetchProducts = async (query = '') => {
         try {
@@ -77,8 +225,7 @@ const POSBilling = () => {
             const res = await getCustomers();
             setCustomers(res.data || []);
             if (res.data && res.data.length > 0) {
-                // Find walk-in or default to first
-                const walkIn = res.data.find(c => c.name.toLowerCase().includes('walk-in'));
+                const walkIn = res.data.find((c) => c.name.toLowerCase().includes('walk-in'));
                 setSelectedCustomerId(walkIn ? walkIn.id : res.data[0].id);
             }
         } catch (err) {
@@ -97,38 +244,14 @@ const POSBilling = () => {
         fetchProducts(val);
     };
 
-    const handleQuickPhotoUpload = async (product, e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-
-        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!allowed.includes(file.type.toLowerCase())) {
-            showAlert('Only JPG, PNG, and WebP images are allowed!', 'error');
-            return;
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-            showAlert('Image size exceeds 5MB limit.', 'error');
-            return;
-        }
-
-        try {
-            await uploadProductImage(product.id, file);
-            showAlert(`Product photo updated for ${product.name}!`);
-            fetchProducts(search);
-        } catch (err) {
-            showAlert(err.response?.data?.message || 'Failed to upload photo', 'error');
-        }
-    };
-
     const handleAddToCart = (product) => {
         if (product.currentStock <= 0) {
             showAlert(`Cannot add ${product.name}. Out of stock!`, 'error');
             return;
         }
 
-        setCart(prevCart => {
-            const existingIndex = prevCart.findIndex(item => item.productId === product.id);
+        setCart((prevCart) => {
+            const existingIndex = prevCart.findIndex((item) => item.productId === product.id);
             if (existingIndex > -1) {
                 const updated = [...prevCart];
                 const currentQty = updated[existingIndex].quantity;
@@ -139,43 +262,49 @@ const POSBilling = () => {
                 updated[existingIndex].quantity += 1;
                 return updated;
             } else {
-                return [...prevCart, {
-                    productId: product.id,
-                    productName: product.name,
-                    productSku: product.sku,
-                    imageUrl: product.imageUrl,
-                    unitPrice: product.sellingPrice,
-                    quantity: 1,
-                    currentStock: product.currentStock,
-                    discountAmount: 0,
-                    taxRate: 0
-                }];
+                return [
+                    ...prevCart,
+                    {
+                        productId: product.id,
+                        productName: product.name,
+                        productSku: product.sku,
+                        barcode: product.barcode,
+                        imageUrl: product.imageUrl,
+                        unitPrice: Number(product.sellingPrice),
+                        quantity: 1,
+                        currentStock: product.currentStock,
+                        discountAmount: 0,
+                        taxRate: 0,
+                    },
+                ];
             }
         });
     };
 
     const handleUpdateQuantity = (productId, delta) => {
-        setCart(prevCart => {
-            return prevCart.map(item => {
-                if (item.productId === productId) {
-                    const newQty = item.quantity + delta;
-                    if (newQty > item.currentStock) {
-                        showAlert(`Max stock limit (${item.currentStock}) reached`, 'warning');
-                        return item;
+        setCart((prevCart) => {
+            return prevCart
+                .map((item) => {
+                    if (item.productId === productId) {
+                        const newQty = item.quantity + delta;
+                        if (newQty > item.currentStock) {
+                            showAlert(`Max stock limit (${item.currentStock}) reached`, 'warning');
+                            return item;
+                        }
+                        return newQty > 0 ? { ...item, quantity: newQty } : null;
                     }
-                    return newQty > 0 ? { ...item, quantity: newQty } : null;
-                }
-                return item;
-            }).filter(Boolean);
+                    return item;
+                })
+                .filter(Boolean);
         });
     };
 
     const handleRemoveFromCart = (productId) => {
-        setCart(prevCart => prevCart.filter(item => item.productId !== productId));
+        setCart((prevCart) => prevCart.filter((item) => item.productId !== productId));
     };
 
     // Financial Computations
-    const subtotal = cart.reduce((acc, item) => acc + (Number(item.unitPrice) * item.quantity), 0);
+    const subtotal = cart.reduce((acc, item) => acc + Number(item.unitPrice) * item.quantity, 0);
     const grandTotal = Math.max(0, subtotal - Number(discountTotal || 0));
 
     const handleCheckout = async () => {
@@ -190,19 +319,19 @@ const POSBilling = () => {
         }
 
         const payload = {
-            userId: user.id,
+            userId: user.id || user.userId || 1,
             customerId: selectedCustomerId || null,
             accountId: selectedAccountId || null,
             paymentMethod: paymentMethod,
             discountTotal: Number(discountTotal || 0),
             paidAmount: grandTotal,
-            items: cart.map(item => ({
+            items: cart.map((item) => ({
                 productId: item.productId,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
                 taxRate: 0,
-                discountAmount: 0
-            }))
+                discountAmount: 0,
+            })),
         };
 
         try {
@@ -211,8 +340,8 @@ const POSBilling = () => {
             setReceiptModalOpen(true);
             setCart([]);
             setDiscountTotal(0);
-            fetchProducts(); // Refresh stock levels
-            showAlert('POS Sale completed! Stock updated and income credited.');
+            fetchProducts();
+            showAlert('POS Sale completed! Inventory and income ledger updated.');
         } catch (err) {
             showAlert(err.response?.data?.message || 'Error processing invoice', 'error');
         }
@@ -234,17 +363,40 @@ const POSBilling = () => {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Box display="flex" alignItems="center" gap={1}>
+            {/* Top POS Header & Keyboard Shortcuts Bar */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} flexWrap="wrap" gap={1}>
+                <Box display="flex" alignItems="center" gap={1.5}>
                     <PointOfSaleIcon color="primary" sx={{ fontSize: 32 }} />
-                    <Typography variant="h4" fontWeight="bold">
-                        POS Terminal & Billing Checkout
-                    </Typography>
+                    <Box>
+                        <Typography variant="h5" fontWeight={800} letterSpacing="-0.02em">
+                            POS Terminal & Checkout
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            USB Scanner & Bluetooth barcode ready
+                        </Typography>
+                    </Box>
+                </Box>
+
+                {/* Shortcuts Badges */}
+                <Box display="flex" alignItems="center" gap={1} bgcolor="#ffffff" px={2} py={0.8} borderRadius={2} border="1px solid #e2e8f0">
+                    <KeyboardIcon sx={{ fontSize: 16, color: '#64748b' }} />
+                    <Chip label="F2: Search" size="small" variant="outlined" sx={{ fontWeight: 600, height: 22 }} />
+                    <Chip label="F4: Clear Cart" size="small" variant="outlined" sx={{ fontWeight: 600, height: 22 }} />
+                    <Chip label="Space: Tender" size="small" variant="outlined" color="primary" sx={{ fontWeight: 600, height: 22 }} />
+                    <Button
+                        size="small"
+                        startIcon={<QrCodeScannerIcon />}
+                        variant="outlined"
+                        onClick={() => setCameraScannerOpen(true)}
+                        sx={{ py: 0.2, px: 1, minHeight: 24, fontSize: '0.75rem' }}
+                    >
+                        Camera Scan
+                    </Button>
                 </Box>
             </Box>
 
             {alert.show && (
-                <Alert severity={alert.severity} sx={{ mb: 2 }}>
+                <Alert severity={alert.severity} sx={{ mb: 2, borderRadius: 2 }}>
                     {alert.message}
                 </Alert>
             )}
@@ -252,41 +404,41 @@ const POSBilling = () => {
             <Grid container spacing={2}>
                 {/* Left Pane: Catalog & Fast Picker */}
                 <Grid item xs={12} md={7}>
-                    <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }} elevation={1}>
                         <TextField
+                            inputRef={searchInputRef}
                             fullWidth
                             size="small"
-                            placeholder="Scan Barcode or Search by Name/SKU..."
+                            placeholder="Scan Barcode or Search by Name/SKU... (Press F2 to focus)"
                             value={search}
                             onChange={handleSearchChange}
                             sx={{ mb: 2 }}
                             InputProps={{
-                                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
+                                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
                             }}
                         />
 
-                        <Grid container spacing={1.5} sx={{ overflowY: 'auto', maxHeight: 'calc(100vh - 220px)', p: 0.5 }}>
-                            {products.map(p => {
+                        <Grid container spacing={1.5} sx={{ overflowY: 'auto', maxHeight: 'calc(100vh - 240px)', p: 0.5 }}>
+                            {products.map((p) => {
                                 const isOut = p.currentStock <= 0;
                                 return (
                                     <Grid item xs={6} sm={4} key={p.id}>
-                                        <Card 
-                                            variant="outlined" 
-                                            sx={{ 
+                                        <Card
+                                            variant="outlined"
+                                            sx={{
                                                 opacity: isOut ? 0.6 : 1,
-                                                borderColor: p.isLowStock ? 'warning.main' : 'divider',
+                                                borderColor: p.currentStock <= p.reorderLevel ? '#f59e0b' : '#e2e8f0',
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 height: '100%',
-                                                transition: 'all 0.2s ease',
+                                                transition: 'all 0.15s ease',
                                                 '&:hover': {
-                                                    boxShadow: isOut ? 'none' : 3,
-                                                    transform: isOut ? 'none' : 'translateY(-2px)'
-                                                }
+                                                    boxShadow: isOut ? 'none' : '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                                    transform: isOut ? 'none' : 'translateY(-2px)',
+                                                },
                                             }}
                                         >
-                                            {/* Plate Photo Banner */}
-                                            <Box sx={{ position: 'relative', height: 110, width: '100%', bgcolor: '#f5f5f5', overflow: 'hidden' }}>
+                                            <Box sx={{ position: 'relative', height: 100, width: '100%', bgcolor: '#f8fafc', overflow: 'hidden' }}>
                                                 {p.imageUrl ? (
                                                     <Box
                                                         component="img"
@@ -301,78 +453,50 @@ const POSBilling = () => {
                                                         alignItems="center"
                                                         justifyContent="center"
                                                         height="100%"
-                                                        color="text.secondary"
+                                                        color="#94a3b8"
                                                     >
-                                                        <RestaurantMenuIcon sx={{ fontSize: 36, opacity: 0.35, mb: 0.5 }} />
-                                                        <Typography variant="caption" sx={{ fontSize: '0.65rem', opacity: 0.6 }}>No Photo</Typography>
+                                                        <RestaurantMenuIcon sx={{ fontSize: 32 }} />
                                                     </Box>
                                                 )}
-
-                                                {/* Stock Status Badge */}
-                                                <Chip 
-                                                    label={isOut ? 'Out' : `${p.currentStock} ${p.unit}`}
-                                                    size="small"
-                                                    color={isOut ? 'error' : (p.isLowStock ? 'warning' : 'primary')}
-                                                    sx={{
-                                                        position: 'absolute',
-                                                        top: 6,
-                                                        right: 6,
-                                                        fontWeight: 'bold',
-                                                        fontSize: '0.65rem',
-                                                        height: 20,
-                                                        boxShadow: 1
-                                                    }}
-                                                />
-
-                                                {/* Quick Upload Plate Photo for Cashier */}
-                                                <label
-                                                    htmlFor={`pos-upload-${p.id}`}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    style={{ position: 'absolute', top: 6, left: 6 }}
-                                                >
-                                                    <input
-                                                        id={`pos-upload-${p.id}`}
-                                                        type="file"
-                                                        accept="image/jpeg,image/png,image/webp"
-                                                        style={{ display: 'none' }}
-                                                        onChange={(e) => handleQuickPhotoUpload(p, e)}
-                                                    />
-                                                    <IconButton
-                                                        component="span"
+                                                {p.barcode && (
+                                                    <Chip
+                                                        label={p.barcode}
                                                         size="small"
                                                         sx={{
-                                                            bgcolor: 'rgba(255,255,255,0.85)',
-                                                            '&:hover': { bgcolor: 'white' },
-                                                            p: 0.5,
-                                                            boxShadow: 1
+                                                            position: 'absolute',
+                                                            top: 6,
+                                                            left: 6,
+                                                            bgcolor: 'rgba(15, 23, 42, 0.85)',
+                                                            color: '#fff',
+                                                            fontSize: '0.65rem',
+                                                            height: 18,
+                                                            fontWeight: 600,
                                                         }}
-                                                        title="Upload / Change Plate Photo"
-                                                    >
-                                                        <PhotoCameraIcon sx={{ fontSize: 16, color: '#455a64' }} />
-                                                    </IconButton>
-                                                </label>
+                                                    />
+                                                )}
                                             </Box>
 
-                                            <CardActionArea 
-                                                onClick={() => handleAddToCart(p)}
+                                            <CardActionArea
                                                 disabled={isOut}
-                                                sx={{ p: 1.2, flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between' }}
+                                                onClick={() => handleAddToCart(p)}
+                                                sx={{ p: 1.5, flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
                                             >
-                                                <Box width="100%">
-                                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
-                                                        {p.sku}
+                                                <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ width: '100%' }}>
+                                                    {p.name}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    SKU: {p.sku}
+                                                </Typography>
+                                                <Box display="flex" justifyContent="space-between" width="100%" mt={1} alignItems="center">
+                                                    <Typography variant="subtitle1" fontWeight={800} color="#2563eb">
+                                                        {Number(p.sellingPrice).toFixed(2)}
                                                     </Typography>
-                                                    <Typography variant="subtitle2" fontWeight="bold" noWrap title={p.name} sx={{ width: '100%' }}>
-                                                        {p.name}
-                                                    </Typography>
-                                                </Box>
-                                                <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" mt={0.5}>
-                                                    <Typography variant="body2" color="primary.main" fontWeight="bold">
-                                                        Rs. {Number(p.sellingPrice).toLocaleString()}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
-                                                        Tap to Add
-                                                    </Typography>
+                                                    <Chip
+                                                        label={isOut ? 'Out of Stock' : `${p.currentStock} left`}
+                                                        size="small"
+                                                        color={isOut ? 'error' : p.currentStock <= p.reorderLevel ? 'warning' : 'default'}
+                                                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 600 }}
+                                                    />
                                                 </Box>
                                             </CardActionArea>
                                         </Card>
@@ -383,54 +507,40 @@ const POSBilling = () => {
                     </Paper>
                 </Grid>
 
-                {/* Right Pane: Active Cart & Billing Form */}
+                {/* Right Pane: Checkout Cart & Tender */}
                 <Grid item xs={12} md={5}>
-                    <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 160px)' }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
-                            <Typography variant="h6" fontWeight="bold" display="flex" alignItems="center" gap={1}>
-                                <ShoppingCartIcon /> Active Cart ({cart.reduce((a, c) => a + c.quantity, 0)})
-                            </Typography>
-                            <Button size="small" color="error" onClick={() => setCart([])} disabled={cart.length === 0}>
-                                Clear Cart
-                            </Button>
+                    <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }} elevation={1}>
+                        {/* Customer & Account Selector */}
+                        <Box display="flex" gap={1} mb={2}>
+                            <FormControl size="small" fullWidth>
+                                <InputLabel>Billing Customer</InputLabel>
+                                <Select
+                                    value={selectedCustomerId}
+                                    label="Billing Customer"
+                                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                                >
+                                    {customers.map((c) => (
+                                        <MenuItem key={c.id} value={c.id}>
+                                            {c.name} {c.phone ? `(${c.phone})` : ''}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <Tooltip title="Quick Register Customer">
+                                <IconButton
+                                    color="primary"
+                                    onClick={() => setCustomerModalOpen(true)}
+                                    sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}
+                                >
+                                    <PersonAddIcon />
+                                </IconButton>
+                            </Tooltip>
                         </Box>
 
-                        {/* Customer & Account Selection */}
-                        <Grid container spacing={1} sx={{ mb: 1.5 }}>
-                            <Grid item xs={9}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Select Customer</InputLabel>
-                                    <Select
-                                        value={selectedCustomerId}
-                                        label="Select Customer"
-                                        onChange={(e) => setSelectedCustomerId(e.target.value)}
-                                    >
-                                        {customers.map(c => (
-                                            <MenuItem key={c.id} value={c.id}>
-                                                {c.name} {c.phone ? `(${c.phone})` : ''}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={3}>
-                                <Button 
-                                    fullWidth 
-                                    variant="outlined" 
-                                    size="small" 
-                                    startIcon={<PersonAddIcon />}
-                                    onClick={() => setCustomerModalOpen(true)}
-                                    sx={{ height: '100%' }}
-                                >
-                                    New
-                                </Button>
-                            </Grid>
-                        </Grid>
-
                         {/* Cart Items Table */}
-                        <TableContainer component={Box} sx={{ flexGrow: 1, maxHeight: '250px', overflowY: 'auto', mb: 2 }}>
+                        <TableContainer sx={{ flexGrow: 1, maxHeight: 'calc(100vh - 460px)', overflowY: 'auto' }}>
                             <Table size="small">
-                                <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                                <TableHead>
                                     <TableRow>
                                         <TableCell>Item</TableCell>
                                         <TableCell align="center">Qty</TableCell>
@@ -441,47 +551,52 @@ const POSBilling = () => {
                                 <TableBody>
                                     {cart.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                                                Cart is empty. Click items to add.
+                                            <TableCell colSpan={4} align="center" sx={{ py: 6, color: '#94a3b8' }}>
+                                                <ShoppingCartIcon sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
+                                                <Typography variant="body2">
+                                                    Cart is empty. Scan barcodes or click items.
+                                                </Typography>
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        cart.map(item => (
-                                            <TableRow key={item.productId}>
-                                                <TableCell sx={{ py: 0.5 }}>
-                                                    <Box display="flex" alignItems="center" gap={1}>
-                                                        <Avatar
-                                                            variant="rounded"
-                                                            src={getImageUrl(item.imageUrl)}
-                                                            alt={item.productName}
-                                                            sx={{ width: 34, height: 34, bgcolor: '#f0f2f5', border: '1px solid #e0e0e0' }}
-                                                        >
-                                                            <RestaurantMenuIcon sx={{ fontSize: 18, color: '#9e9e9e' }} />
-                                                        </Avatar>
-                                                        <Box>
-                                                            <Typography variant="body2" fontWeight="bold">{item.productName}</Typography>
-                                                            <Typography variant="caption" color="textSecondary">@ Rs.{item.unitPrice}</Typography>
-                                                        </Box>
-                                                    </Box>
+                                        cart.map((item) => (
+                                            <TableRow key={item.productId} hover>
+                                                <TableCell sx={{ py: 1 }}>
+                                                    <Typography variant="body2" fontWeight={700}>
+                                                        {item.productName}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {Number(item.unitPrice).toFixed(2)} ea
+                                                    </Typography>
                                                 </TableCell>
-                                                <TableCell align="center" sx={{ py: 0.5 }}>
-                                                    <Box display="flex" alignItems="center" justifyContent="center">
-                                                        <IconButton size="small" onClick={() => handleUpdateQuantity(item.productId, -1)}>
+                                                <TableCell align="center">
+                                                    <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleUpdateQuantity(item.productId, -1)}
+                                                        >
                                                             <RemoveIcon fontSize="small" />
                                                         </IconButton>
-                                                        <Typography variant="body2" sx={{ mx: 0.5, fontWeight: 'bold' }}>
+                                                        <Typography variant="body2" fontWeight={700} sx={{ minWidth: 20, textAlign: 'center' }}>
                                                             {item.quantity}
                                                         </Typography>
-                                                        <IconButton size="small" onClick={() => handleUpdateQuantity(item.productId, 1)}>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleUpdateQuantity(item.productId, 1)}
+                                                        >
                                                             <AddIcon fontSize="small" />
                                                         </IconButton>
                                                     </Box>
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ py: 0.5, fontWeight: 'bold' }}>
-                                                    Rs. {(item.unitPrice * item.quantity).toLocaleString()}
+                                                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                                                    {(item.unitPrice * item.quantity).toFixed(2)}
                                                 </TableCell>
-                                                <TableCell align="center" sx={{ py: 0.5 }}>
-                                                    <IconButton size="small" color="error" onClick={() => handleRemoveFromCart(item.productId)}>
+                                                <TableCell align="center">
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={() => handleRemoveFromCart(item.productId)}
+                                                    >
                                                         <DeleteIcon fontSize="small" />
                                                     </IconButton>
                                                 </TableCell>
@@ -492,106 +607,133 @@ const POSBilling = () => {
                             </Table>
                         </TableContainer>
 
-                        {/* Payment Settings */}
-                        <Box sx={{ backgroundColor: '#fafafa', p: 1.5, borderRadius: 1, border: '1px solid #eee', mb: 2 }}>
-                            <Typography variant="caption" fontWeight="bold" color="textSecondary" sx={{ mb: 1, display: 'block' }}>
-                                PAYMENT CHANNEL & ACCOUNT
-                            </Typography>
-                            <ToggleButtonGroup
-                                value={paymentMethod}
-                                exclusive
-                                onChange={(e, newMethod) => newMethod && setPaymentMethod(newMethod)}
-                                size="small"
-                                fullWidth
-                                sx={{ mb: 1 }}
-                            >
-                                <ToggleButton value="CASH">Cash</ToggleButton>
-                                <ToggleButton value="CARD">Card</ToggleButton>
-                                <ToggleButton value="TRANSFER">Bank</ToggleButton>
-                                <ToggleButton value="CUSTOMER_CREDIT">Credit</ToggleButton>
-                            </ToggleButtonGroup>
-
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Target Account for Ledger</InputLabel>
-                                <Select
-                                    value={selectedAccountId}
-                                    label="Target Account for Ledger"
-                                    onChange={(e) => setSelectedAccountId(e.target.value)}
-                                >
-                                    {accounts.map(acc => (
-                                        <MenuItem key={acc.id} value={acc.id}>
-                                            {acc.name} ({acc.type})
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Box>
-
-                        {/* Financial Totals */}
-                        <Box sx={{ mb: 2 }}>
-                            <Box display="flex" justifyContent="space-between" mb={0.5}>
-                                <Typography variant="body2">Subtotal:</Typography>
-                                <Typography variant="body2">Rs. {subtotal.toLocaleString()}</Typography>
+                        {/* Totals & Tender Block */}
+                        <Box sx={{ mt: 'auto', pt: 2, borderTop: '1px solid #e2e8f0' }}>
+                            <Box display="flex" justifyContent="space-between" mb={1}>
+                                <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+                                <Typography variant="body2" fontWeight={600}>{subtotal.toFixed(2)}</Typography>
                             </Box>
                             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                <Typography variant="body2">Discount (PKR):</Typography>
+                                <Typography variant="body2" color="text.secondary">Discount Total:</Typography>
                                 <TextField
                                     size="small"
                                     type="number"
                                     value={discountTotal}
-                                    onChange={(e) => setDiscountTotal(e.target.value)}
-                                    sx={{ width: '100px', input: { textAlign: 'right', py: 0.5 } }}
+                                    onChange={(e) => setDiscountTotal(Math.max(0, Number(e.target.value)))}
+                                    sx={{ width: 100 }}
+                                    inputProps={{ style: { textAlign: 'right', padding: '4px 8px' } }}
                                 />
                             </Box>
-                            <Box display="flex" justifyContent="space-between" pt={1} sx={{ borderTop: '2px solid #333' }}>
-                                <Typography variant="h6" fontWeight="bold">GRAND TOTAL:</Typography>
-                                <Typography variant="h6" fontWeight="bold" color="primary.main">
-                                    Rs. {grandTotal.toLocaleString()}
+                            <Divider sx={{ my: 1 }} />
+                            <Box display="flex" justifyContent="space-between" mb={2}>
+                                <Typography variant="h6" fontWeight={800}>Amount Payable:</Typography>
+                                <Typography variant="h5" fontWeight={800} color="#2563eb">
+                                    {grandTotal.toFixed(2)}
                                 </Typography>
                             </Box>
-                        </Box>
 
-                        {/* Checkout Trigger */}
-                        <Button
-                            variant="contained"
-                            color="success"
-                            size="large"
-                            fullWidth
-                            disabled={cart.length === 0}
-                            onClick={handleCheckout}
-                            sx={{ py: 1.5, fontSize: '18px', fontWeight: 'bold' }}
-                        >
-                            Checkout & Print Receipt
-                        </Button>
+                            {/* Payment Channels */}
+                            <Grid container spacing={1} mb={2}>
+                                {['CASH', 'CARD', 'TRANSFER', 'CUSTOMER_CREDIT'].map((method) => (
+                                    <Grid item xs={3} key={method}>
+                                        <Button
+                                            fullWidth
+                                            size="small"
+                                            variant={paymentMethod === method ? 'contained' : 'outlined'}
+                                            onClick={() => setPaymentMethod(method)}
+                                            sx={{ py: 0.8, fontSize: '0.72rem', fontWeight: 700 }}
+                                        >
+                                            {method === 'CUSTOMER_CREDIT' ? 'Credit' : method}
+                                        </Button>
+                                    </Grid>
+                                ))}
+                            </Grid>
+
+                            {/* Action Buttons */}
+                            <Box display="flex" gap={1}>
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<DeleteSweepIcon />}
+                                    onClick={() => setCart([])}
+                                    disabled={cart.length === 0}
+                                    sx={{ minWidth: 100 }}
+                                >
+                                    Clear (F4)
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    color="primary"
+                                    size="large"
+                                    startIcon={<CheckCircleIcon />}
+                                    onClick={handleCheckout}
+                                    disabled={cart.length === 0}
+                                    sx={{ py: 1.2, fontWeight: 700, fontSize: '1rem' }}
+                                >
+                                    Complete Sale ({grandTotal.toFixed(2)})
+                                </Button>
+                            </Box>
+                        </Box>
                     </Paper>
                 </Grid>
             </Grid>
 
-            {/* Thermal Receipt Print Preview Modal */}
-            <Dialog open={receiptModalOpen} onClose={() => setReceiptModalOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Sale Completed - Print Thermal Receipt</DialogTitle>
-                <DialogContent dividers>
-                    <ThermalReceipt invoice={completedInvoice} />
+            {/* Camera Barcode Scanner Dialog */}
+            <Dialog open={cameraScannerOpen} onClose={() => setCameraScannerOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle fontWeight={700}>Camera Barcode Scanner</DialogTitle>
+                <DialogContent dividers sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                        Point your camera at a product barcode or QR code
+                    </Typography>
+                    <Box
+                        sx={{
+                            width: '100%',
+                            height: 260,
+                            bgcolor: '#000',
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            position: 'relative',
+                        }}
+                    >
+                        <video
+                            ref={videoRef}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            playsInline
+                            muted
+                        />
+                        {/* Targeting box overlay */}
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                width: '70%',
+                                height: '45%',
+                                border: '2px solid #2563eb',
+                                borderRadius: 1.5,
+                                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
+                            }}
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setReceiptModalOpen(false)}>Close</Button>
-                    <Button variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}>
-                        Print Thermal Receipt
-                    </Button>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button onClick={() => setCameraScannerOpen(false)}>Close Scanner</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Quick Add Customer Modal */}
+            {/* Quick Customer Dialog */}
             <Dialog open={customerModalOpen} onClose={() => setCustomerModalOpen(false)} maxWidth="xs" fullWidth>
                 <form onSubmit={handleSaveCustomer}>
-                    <DialogTitle>Add New Customer</DialogTitle>
+                    <DialogTitle fontWeight={700}>Quick Register Customer</DialogTitle>
                     <DialogContent dividers>
                         <Grid container spacing={2}>
                             <Grid item xs={12}>
                                 <TextField
                                     label="Customer Name"
-                                    required
                                     fullWidth
+                                    required
                                     value={customerForm.name}
                                     onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
                                 />
@@ -607,7 +749,6 @@ const POSBilling = () => {
                             <Grid item xs={12}>
                                 <TextField
                                     label="Email Address"
-                                    type="email"
                                     fullWidth
                                     value={customerForm.email}
                                     onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
@@ -615,11 +756,27 @@ const POSBilling = () => {
                             </Grid>
                         </Grid>
                     </DialogContent>
-                    <DialogActions>
+                    <DialogActions sx={{ px: 3, py: 2 }}>
                         <Button onClick={() => setCustomerModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained">Save Customer</Button>
+                        <Button type="submit" variant="contained">
+                            Save Customer
+                        </Button>
                     </DialogActions>
                 </form>
+            </Dialog>
+
+            {/* Thermal Receipt Print Dialog */}
+            <Dialog open={receiptModalOpen} onClose={() => setReceiptModalOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle fontWeight={700}>Checkout Receipt</DialogTitle>
+                <DialogContent dividers>
+                    {completedInvoice && <ThermalReceipt invoice={completedInvoice} />}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button onClick={() => setReceiptModalOpen(false)}>Done</Button>
+                    <Button variant="contained" onClick={() => window.print()} startIcon={<PrintIcon />}>
+                        Print Receipt
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Box>
     );

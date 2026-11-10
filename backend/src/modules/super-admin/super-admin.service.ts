@@ -305,6 +305,148 @@ export class SuperAdminService {
     return settings;
   }
 
+  async getAllUsers(search?: string, role?: string, status?: string) {
+    const qb = this.userRepo.createQueryBuilder('u')
+      .orderBy('u.createdAt', 'DESC');
+
+    if (search) {
+      qb.andWhere(
+        '(LOWER(u.fullName) LIKE :s OR LOWER(u.email) LIKE :s)',
+        { s: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    if (role && role !== 'ALL') {
+      qb.andWhere('u.role = :role', { role });
+    }
+
+    if (status && status !== 'ALL') {
+      qb.andWhere('(u.userStatus = :status OR u.status = :status)', { status });
+    }
+
+    const users = await qb.getMany();
+    const tenants = await this.tenantRepo.find();
+    const tenantMap = new Map(tenants.map((t) => [t.id, t]));
+
+    return users.map((u) => {
+      const { passwordHash: _, ...rest } = u;
+      const tenant = u.tenantId ? tenantMap.get(u.tenantId) : null;
+      return {
+        ...rest,
+        tenant: tenant
+          ? {
+              id: tenant.id,
+              storeName: tenant.storeName,
+              slug: tenant.slug,
+              status: tenant.status,
+              planTier: tenant.planTier,
+            }
+          : null,
+      };
+    });
+  }
+
+  async updateUserAccess(
+    id: number,
+    data: {
+      role?: UserRole;
+      status?: UserStatus;
+      tenantId?: string | null;
+      fullName?: string;
+      password?: string;
+    },
+  ) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User not found with id ${id}`);
+    }
+
+    if (data.fullName) {
+      user.fullName = data.fullName.trim();
+    }
+
+    if (data.role) {
+      user.role = data.role;
+      if (data.role === UserRole.ROLE_SUPER_ADMIN) {
+        user.tenantId = null;
+      }
+    }
+
+    if (data.status) {
+      user.userStatus = data.status;
+      user.status = data.status;
+    }
+
+    if (data.tenantId !== undefined) {
+      if (data.tenantId && user.role !== UserRole.ROLE_SUPER_ADMIN) {
+        const tenant = await this.tenantRepo.findOne({ where: { id: data.tenantId } });
+        if (!tenant) {
+          throw new NotFoundException(`Tenant store not found: ${data.tenantId}`);
+        }
+        user.tenantId = tenant.id;
+      } else if (data.tenantId === null) {
+        user.tenantId = null;
+      }
+    }
+
+    if (data.password && data.password.trim().length >= 6) {
+      user.passwordHash = await bcrypt.hash(data.password.trim(), 10);
+    }
+
+    const saved = await this.userRepo.save(user);
+    const { passwordHash: _, ...rest } = saved;
+    return rest;
+  }
+
+  async createPlatformUser(data: {
+    fullName: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    tenantId?: string | null;
+  }) {
+    const existing = await this.userRepo.findOne({ where: { email: data.email.toLowerCase().trim() } });
+    if (existing) {
+      throw new BadRequestException(`Email '${data.email}' is already registered`);
+    }
+
+    if (!data.password || data.password.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
+
+    const tenantId = data.tenantId || null;
+    if (data.role !== UserRole.ROLE_SUPER_ADMIN && !tenantId) {
+      throw new BadRequestException('Tenant store is required for store roles');
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+    const user = this.userRepo.create({
+      fullName: data.fullName.trim(),
+      email: data.email.toLowerCase().trim(),
+      passwordHash,
+      role: data.role,
+      userStatus: UserStatus.ACTIVE,
+      status: 'ACTIVE',
+      tenantId: data.role === UserRole.ROLE_SUPER_ADMIN ? null : tenantId,
+    });
+
+    const saved = await this.userRepo.save(user);
+    const { passwordHash: _, ...rest } = saved;
+    return rest;
+  }
+
+  async deletePlatformUser(id: number, currentUserId: number) {
+    if (id === currentUserId) {
+      throw new BadRequestException('You cannot delete your own Super Admin account');
+    }
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await this.userRepo.delete(id);
+    return { success: true, message: `User account '${user.fullName}' deleted successfully` };
+  }
+
   async updateSettings(id: string, data: Partial<TenantSettings>) {
     let settings = await this.getSettings(id);
     Object.assign(settings, data);

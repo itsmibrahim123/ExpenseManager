@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Invoice } from './entities/invoice.entity';
 import { InvoiceItem } from './entities/invoice-item.entity';
+import { InvoicePayment } from './entities/invoice-payment.entity';
 import { Product } from '../products/entities/product.entity';
+import { ProductSerial } from '../products/entities/product-serial.entity';
 import { StockMovement } from '../stock/entities/stock-movement.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import { Account } from '../accounts/entities/account.entity';
@@ -16,7 +18,9 @@ import { InvoicesController } from './invoices.controller';
     TypeOrmModule.forFeature([
       Invoice,
       InvoiceItem,
+      InvoicePayment,
       Product,
+      ProductSerial,
       StockMovement,
       Customer,
       Account,

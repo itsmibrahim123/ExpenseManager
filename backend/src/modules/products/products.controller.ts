@@ -202,4 +202,23 @@ export class ProductsController {
   ) {
     return this.productsService.restockProduct(id, dto);
   }
+
+  @Get(':id/serials')
+  async getProductSerials(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('status') status?: any,
+  ) {
+    return this.productsService.getProductSerials(id, status);
+  }
+
+  @Post(':id/serials')
+  async addProductSerials(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { serialNumbers: string[]; notes?: string },
+  ) {
+    if (!body.serialNumbers || !Array.isArray(body.serialNumbers)) {
+      throw new BadRequestException('serialNumbers array is required');
+    }
+    return this.productsService.addProductSerials(id, body.serialNumbers, body.notes);
+  }
 }

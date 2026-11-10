@@ -1,7 +1,6 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, IconButton, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, IconButton, Box } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import AccountCircle from '@mui/icons-material/AccountCircle';
 import ExitToApp from '@mui/icons-material/ExitToApp';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';

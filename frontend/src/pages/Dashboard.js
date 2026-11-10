@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { 
-    Typography, Grid, Paper, Box, Divider, 
+    Typography, Grid, Paper, Box, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     Chip, CircularProgress 
 } from '@mui/material';

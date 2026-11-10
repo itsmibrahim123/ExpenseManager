@@ -3,7 +3,7 @@ import {
     Box, Typography, Button, TextField, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
     Grid, FormControlLabel, Switch, MenuItem, Select, InputLabel, FormControl, Alert, CircularProgress,
-    Avatar, IconButton, Tooltip, Card, CardMedia
+    Avatar, IconButton, Tooltip, Card, CardMedia, Divider
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -24,8 +24,13 @@ import {
     restockProduct,
     uploadProductImage,
     uploadImage,
-    deleteProductImage
+    deleteProductImage,
+    getProductSerials,
+    addProductSerials
 } from '../api/inventoryApi';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
+import TagIcon from '@mui/icons-material/Tag';
+import BarcodeLabelSheet from '../components/print/BarcodeLabelSheet';
 import { getAccountsByUser } from '../api/accountsService';
 import { useAuth } from '../context/AuthContext';
 
@@ -55,12 +60,26 @@ const Inventory = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [productToDelete, setProductToDelete] = useState(null);
 
+    // Barcode Printing State
+    const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
+    const [barcodeProduct, setBarcodeProduct] = useState(null);
+    const [barcodeCopies, setBarcodeCopies] = useState(12);
+    const [barcodeFormat, setBarcodeFormat] = useState('SHEET_24');
+
+    // Serial Numbers State
+    const [serialModalOpen, setSerialModalOpen] = useState(false);
+    const [serialProduct, setSerialProduct] = useState(null);
+    const [serialsList, setSerialsList] = useState([]);
+    const [newSerialsInput, setNewSerialsInput] = useState('');
+    const [loadingSerials, setLoadingSerials] = useState(false);
+
     // Image Upload State
     const [selectedImageFile, setSelectedImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
     const [imageError, setImageError] = useState('');
     const [savingProduct, setSavingProduct] = useState(false);
+    const [quickUploadingId, setQuickUploadingId] = useState(null);
 
     // Forms
     const [productForm, setProductForm] = useState({
@@ -149,6 +168,48 @@ const Inventory = () => {
         setProductForm(prev => ({ ...prev, imageUrl: '' }));
     };
 
+    const handleOpenBarcodeModal = (product) => {
+        setBarcodeProduct(product || products[0] || null);
+        setBarcodeModalOpen(true);
+    };
+
+    const handleOpenSerialModal = async (product) => {
+        setSerialProduct(product);
+        setLoadingSerials(true);
+        setSerialModalOpen(true);
+        setNewSerialsInput('');
+        try {
+            const res = await getProductSerials(product.id);
+            setSerialsList(res.data || []);
+        } catch (err) {
+            showAlert('Failed to load serial numbers', 'error');
+        } finally {
+            setLoadingSerials(false);
+        }
+    };
+
+    const handleAddSerials = async (e) => {
+        e.preventDefault();
+        if (!serialProduct || !newSerialsInput.trim()) return;
+
+        const serials = newSerialsInput
+            .split(/[\n,]+/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        if (serials.length === 0) return;
+
+        try {
+            await addProductSerials(serialProduct.id, serials);
+            showAlert(`Added ${serials.length} serial numbers for ${serialProduct.name}!`);
+            setNewSerialsInput('');
+            const res = await getProductSerials(serialProduct.id);
+            setSerialsList(res.data || []);
+        } catch (err) {
+            showAlert(err.response?.data?.message || 'Error adding serial numbers', 'error');
+        }
+    };
+
     const handleOpenCreateModal = () => {
         setSelectedProduct(null);
         setSelectedImageFile(null);
@@ -202,12 +263,16 @@ const Inventory = () => {
             return;
         }
 
+        setQuickUploadingId(product.id);
         try {
             await uploadProductImage(product.id, file);
             showAlert(`Image updated successfully for ${product.name}!`);
-            fetchProducts();
+            await fetchProducts();
         } catch (err) {
-            showAlert(err.response?.data?.message || 'Failed to upload photo', 'error');
+            showAlert(err.response?.data?.message || err.message || 'Failed to upload photo', 'error');
+        } finally {
+            setQuickUploadingId(null);
+            e.target.value = '';
         }
     };
 
@@ -245,25 +310,44 @@ const Inventory = () => {
         e.preventDefault();
         setSavingProduct(true);
         try {
+            const parseNum = (val, fallback = 0) => {
+                if (val === '' || val === null || val === undefined) return fallback;
+                const n = Number(val);
+                return Number.isFinite(n) ? n : fallback;
+            };
+
+            const cleanPayload = {
+                sku: productForm.sku?.trim(),
+                barcode: productForm.barcode?.trim() || undefined,
+                name: productForm.name?.trim(),
+                description: productForm.description?.trim() || undefined,
+                costPrice: parseNum(productForm.costPrice, 0),
+                sellingPrice: parseNum(productForm.sellingPrice, 0),
+                currentStock: parseNum(productForm.currentStock, 0),
+                reorderLevel: parseNum(productForm.reorderLevel, 5),
+                unit: productForm.unit || 'PCS',
+                categoryId: productForm.categoryId ? parseNum(productForm.categoryId) : undefined,
+                active: productForm.active !== undefined ? Boolean(productForm.active) : true,
+            };
+
             if (selectedProduct) {
                 // If editing existing product
                 let updatedImageUrl = productForm.imageUrl;
 
-                // Handle image removal if user removed previous image
-                if (!imagePreview && selectedProduct.imageUrl) {
+                // If user selected a new image file, upload it first
+                if (selectedImageFile) {
+                    const uploadRes = await uploadImage(selectedImageFile);
+                    updatedImageUrl = uploadRes.data?.imageUrl || updatedImageUrl;
+                } else if (!imagePreview && selectedProduct.imageUrl) {
+                    // User explicitly removed previous image
                     await deleteProductImage(selectedProduct.id);
                     updatedImageUrl = '';
                 }
 
                 await updateProduct(selectedProduct.id, {
-                    ...productForm,
+                    ...cleanPayload,
                     imageUrl: updatedImageUrl
                 });
-
-                // If user picked a new file to upload
-                if (selectedImageFile) {
-                    await uploadProductImage(selectedProduct.id, selectedImageFile);
-                }
 
                 showAlert('Product updated successfully!');
             } else {
@@ -271,15 +355,15 @@ const Inventory = () => {
                 let finalImageUrl = productForm.imageUrl;
                 if (selectedImageFile) {
                     const uploadRes = await uploadImage(selectedImageFile);
-                    finalImageUrl = uploadRes.data?.imageUrl;
+                    finalImageUrl = uploadRes.data?.imageUrl || finalImageUrl;
                 }
-                await createProduct({ ...productForm, imageUrl: finalImageUrl });
+                await createProduct({ ...cleanPayload, imageUrl: finalImageUrl });
                 showAlert('Product created successfully with image!');
             }
             setProductModalOpen(false);
             fetchProducts();
         } catch (err) {
-            showAlert(err.response?.data?.message || 'Error saving product', 'error');
+            showAlert(err.response?.data?.message || err.message || 'Error saving product', 'error');
         } finally {
             setSavingProduct(false);
         }
@@ -310,14 +394,24 @@ const Inventory = () => {
                         Product & Inventory Management
                     </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleOpenCreateModal}
-                    size="large"
-                >
-                    Add New Product
-                </Button>
+                <Box display="flex" gap={1.5}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<QrCode2Icon />}
+                        onClick={() => handleOpenBarcodeModal(products[0])}
+                        disabled={products.length === 0}
+                    >
+                        Print Barcode Labels
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleOpenCreateModal}
+                        size="large"
+                    >
+                        Add New Product
+                    </Button>
+                </Box>
             </Box>
 
             {alert.show && (
@@ -457,14 +551,21 @@ const Inventory = () => {
                                                         style={{ display: 'none' }}
                                                         onChange={(e) => handleQuickImageUpload(p, e)}
                                                     />
-                                                    <Tooltip title="Quick upload / replace photo">
-                                                        <IconButton
-                                                            component="span"
-                                                            size="small"
-                                                            color="primary"
-                                                        >
-                                                            <PhotoCameraIcon fontSize="small" />
-                                                        </IconButton>
+                                                    <Tooltip title={quickUploadingId === p.id ? "Uploading image..." : "Quick upload / replace photo"}>
+                                                        <span>
+                                                            <IconButton
+                                                                component="span"
+                                                                size="small"
+                                                                color="primary"
+                                                                disabled={quickUploadingId === p.id}
+                                                            >
+                                                                {quickUploadingId === p.id ? (
+                                                                    <CircularProgress size={18} color="inherit" />
+                                                                ) : (
+                                                                    <PhotoCameraIcon fontSize="small" />
+                                                                )}
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
                                                 </label>
                                             </Box>
@@ -496,11 +597,31 @@ const Inventory = () => {
                                             Rs. {Number(p.sellingPrice).toLocaleString()}
                                         </TableCell>
                                         <TableCell align="center">
+                                            <Tooltip title="Print Product Barcode Sheet">
+                                                <IconButton
+                                                    size="small"
+                                                    color="primary"
+                                                    onClick={() => handleOpenBarcodeModal(p)}
+                                                    sx={{ mr: 0.5 }}
+                                                >
+                                                    <QrCode2Icon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Manage Item Serial Numbers">
+                                                <IconButton
+                                                    size="small"
+                                                    color="secondary"
+                                                    onClick={() => handleOpenSerialModal(p)}
+                                                    sx={{ mr: 0.5 }}
+                                                >
+                                                    <TagIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
                                             <Button
                                                 size="small"
                                                 variant="outlined"
                                                 color="success"
-                                                sx={{ mr: 1 }}
+                                                sx={{ mr: 0.8 }}
                                                 onClick={() => handleOpenRestockModal(p)}
                                             >
                                                 Restock
@@ -509,7 +630,7 @@ const Inventory = () => {
                                                 size="small"
                                                 variant="outlined"
                                                 startIcon={<EditIcon />}
-                                                sx={{ mr: 1 }}
+                                                sx={{ mr: 0.8 }}
                                                 onClick={() => handleOpenEditModal(p)}
                                             >
                                                 Edit
@@ -712,10 +833,17 @@ const Inventory = () => {
                             </Grid>
                         </Grid>
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setProductModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained" disabled={savingProduct}>
-                            {savingProduct ? 'Saving...' : 'Save Product'}
+                    <DialogActions sx={{ px: 3, pb: 2 }}>
+                        <Button onClick={() => setProductModalOpen(false)} disabled={savingProduct}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={savingProduct}
+                            startIcon={savingProduct ? <CircularProgress size={16} color="inherit" /> : null}
+                        >
+                            {savingProduct ? 'Saving Product...' : (selectedProduct ? 'Update Product' : 'Create Product')}
                         </Button>
                     </DialogActions>
                 </form>
@@ -879,6 +1007,173 @@ const Inventory = () => {
                     <Button onClick={handleConfirmDelete} color="error" variant="contained">
                         Delete
                     </Button>
+                </DialogActions>
+            </Dialog>
+            {/* Print Barcode Labels Dialog */}
+            <Dialog open={barcodeModalOpen} onClose={() => setBarcodeModalOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle fontWeight={700}>Print Barcode Labels (Code128)</DialogTitle>
+                <DialogContent dividers>
+                    <Grid container spacing={2} alignItems="center" mb={2}>
+                        <Grid item xs={12} sm={5}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Selected Product</InputLabel>
+                                <Select
+                                    value={barcodeProduct?.id || ''}
+                                    label="Selected Product"
+                                    onChange={(e) => {
+                                        const found = products.find((p) => p.id === e.target.value);
+                                        if (found) setBarcodeProduct(found);
+                                    }}
+                                >
+                                    {products.map((p) => (
+                                        <MenuItem key={p.id} value={p.id}>
+                                            {p.name} ({p.sku})
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Sheet Layout</InputLabel>
+                                <Select
+                                    value={barcodeFormat}
+                                    label="Sheet Layout"
+                                    onChange={(e) => setBarcodeFormat(e.target.value)}
+                                >
+                                    <MenuItem value="SHEET_24">A4 (3x8 Grid / 24-up)</MenuItem>
+                                    <MenuItem value="THERMAL_50X30">Thermal Roll (50x30mm)</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={6} sm={2}>
+                            <TextField
+                                label="Label Copies"
+                                type="number"
+                                size="small"
+                                fullWidth
+                                value={barcodeCopies}
+                                onChange={(e) => setBarcodeCopies(Math.max(1, Number(e.target.value)))}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={2}>
+                            <Button
+                                fullWidth
+                                variant="contained"
+                                startIcon={<QrCode2Icon />}
+                                onClick={() => window.print()}
+                            >
+                                Print Sheet
+                            </Button>
+                        </Grid>
+                    </Grid>
+
+                    <Divider sx={{ mb: 2 }} />
+
+                    {/* Barcode Sheet Render Preview */}
+                    <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, bgcolor: '#f8fafc', p: 1, maxHeight: 420, overflowY: 'auto' }}>
+                        {barcodeProduct && (
+                            <BarcodeLabelSheet
+                                product={barcodeProduct}
+                                copies={barcodeCopies}
+                                sheetFormat={barcodeFormat}
+                            />
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button onClick={() => setBarcodeModalOpen(false)}>Close</Button>
+                    <Button variant="contained" onClick={() => window.print()} startIcon={<QrCode2Icon />}>
+                        Print Labels
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Serial Numbers Management Dialog */}
+            <Dialog open={serialModalOpen} onClose={() => setSerialModalOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle fontWeight={700}>
+                    Item Serial Numbers - {serialProduct?.name} ({serialProduct?.sku})
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                        Track individual unit serial numbers for warranties, restock, and POS sales validation.
+                    </Typography>
+
+                    {/* Batch Add Serials */}
+                    <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: '#f8fafc' }}>
+                        <Typography variant="subtitle2" fontWeight={700} mb={1}>
+                            Batch Register Serial Numbers
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            placeholder="Enter or scan serial numbers (one per line or comma-separated)&#10;e.g.&#10;SN-8840192&#10;SN-8840193&#10;SN-8840194"
+                            value={newSerialsInput}
+                            onChange={(e) => setNewSerialsInput(e.target.value)}
+                            sx={{ mb: 1.5, bgcolor: '#ffffff' }}
+                        />
+                        <Button
+                            variant="contained"
+                            size="small"
+                            onClick={handleAddSerials}
+                            disabled={!newSerialsInput.trim()}
+                        >
+                            Register Serial Numbers
+                        </Button>
+                    </Paper>
+
+                    {/* Currently Registered Serials */}
+                    <Typography variant="subtitle2" fontWeight={700} mb={1}>
+                        Registered Serials ({serialsList.length})
+                    </Typography>
+                    {loadingSerials ? (
+                        <Box textAlign="center" py={3}>
+                            <CircularProgress size={24} />
+                        </Box>
+                    ) : serialsList.length === 0 ? (
+                        <Typography variant="caption" color="text.secondary">
+                            No serial numbers registered yet for this product.
+                        </Typography>
+                    ) : (
+                        <Box sx={{ maxHeight: 220, overflowY: 'auto' }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Serial Number</TableCell>
+                                        <TableCell align="center">Status</TableCell>
+                                        <TableCell>Registered At</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {serialsList.map((sn) => {
+                                        let color = 'default';
+                                        if (sn.status === 'IN_STOCK') color = 'success';
+                                        else if (sn.status === 'SOLD') color = 'primary';
+                                        else if (sn.status === 'DEFECTIVE') color = 'error';
+                                        else if (sn.status === 'RETURNED') color = 'warning';
+
+                                        return (
+                                            <TableRow key={sn.id} hover>
+                                                <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                                                    {sn.serialNumber}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Chip label={sn.status} color={color} size="small" />
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                    {new Date(sn.createdAt).toLocaleDateString()}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button onClick={() => setSerialModalOpen(false)}>Done</Button>
                 </DialogActions>
             </Dialog>
         </Box>

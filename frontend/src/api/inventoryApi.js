@@ -29,18 +29,14 @@ export const uploadImage = (file, productId = null) => {
     if (productId) {
         formData.append('productId', productId);
     }
-    return api.post('/products/upload-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    return api.post('/products/upload-image', formData);
 };
 
 // Upload image specifically for a product
 export const uploadProductImage = (id, file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post(`/products/${id}/image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    return api.post(`/products/${id}/image`, formData);
 };
 
 // Delete image from a product
@@ -50,6 +46,16 @@ export const deleteProductImage = (id) => {
 
 export const restockProduct = (id, restockData) => {
     return api.post(`/products/${id}/restock`, restockData);
+};
+
+export const getProductSerials = (id, status) => {
+    return api.get(`/products/${id}/serials`, {
+        params: { status }
+    });
+};
+
+export const addProductSerials = (id, serialNumbers, notes) => {
+    return api.post(`/products/${id}/serials`, { serialNumbers, notes });
 };
 
 export const adjustStock = (adjustmentData) => {

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DailyRegisterSession } from './entities/daily-register-session.entity';
+import { RegisterMovement } from './entities/register-movement.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { Transaction } from '../transactions/entities/transaction.entity';
 import { RegisterService } from './register.service';
@@ -10,6 +11,7 @@ import { RegisterController } from './register.controller';
   imports: [
     TypeOrmModule.forFeature([
       DailyRegisterSession,
+      RegisterMovement,
       Invoice,
       Transaction,
     ]),

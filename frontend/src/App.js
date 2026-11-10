@@ -18,6 +18,7 @@ import Inventory from './pages/Inventory';
 import POSBilling from './pages/POSBilling';
 import Invoices from './pages/Invoices';
 import DailyRegister from './pages/DailyRegister';
+import StaffManagement from './pages/StaffManagement';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminStores from './pages/admin/AdminStores';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -53,6 +54,7 @@ function App() {
                   <Route element={<Layout><DailyRegister /></Layout>} path="/daily-register" />
                   <Route element={<Layout><DailyRegister /></Layout>} path="/register" />
                   <Route element={<Layout><DailyRegister /></Layout>} path="/reports/daily-register" />
+                  <Route element={<Layout><StaffManagement /></Layout>} path="/staff" />
                   <Route element={<Layout><Accounts /></Layout>} path="/accounts" />
                   <Route element={<Layout><Transactions /></Layout>} path="/transactions" />
                   <Route element={<Layout><Transactions /></Layout>} path="/transfers" />

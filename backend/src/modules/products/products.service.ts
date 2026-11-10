@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { Product } from './entities/product.entity';
+import { ProductSerial, SerialStatus } from './entities/product-serial.entity';
 import { StockMovement } from '../stock/entities/stock-movement.entity';
 import { TenantContext } from '../../common/context/tenant-context';
 import {
@@ -43,6 +44,8 @@ export class ProductsService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(StockMovement)
     private readonly stockMovementRepo: Repository<StockMovement>,
+    @InjectRepository(ProductSerial)
+    private readonly serialRepo: Repository<ProductSerial>,
   ) {}
 
   private getTenantId(): string {
@@ -233,5 +236,46 @@ export class ProductsService {
 
   async getLowStockProducts(): Promise<Product[]> {
     return this.getAllProducts(undefined, true);
+  }
+
+  async getProductSerials(productId: number, status?: SerialStatus): Promise<ProductSerial[]> {
+    const tenantId = this.getTenantId();
+    const where: any = { tenantId, productId };
+    if (status) where.status = status;
+    return this.serialRepo.find({ where, order: { createdAt: 'DESC' } });
+  }
+
+  async addProductSerials(
+    productId: number,
+    serialNumbers: string[],
+    notes?: string,
+  ): Promise<ProductSerial[]> {
+    const tenantId = this.getTenantId();
+    const product = await this.getProductById(productId);
+    const saved: ProductSerial[] = [];
+
+    for (const rawSn of serialNumbers) {
+      const sn = rawSn.trim();
+      if (!sn) continue;
+      let existing = await this.serialRepo.findOne({
+        where: { tenantId, serialNumber: sn },
+      });
+      if (existing) {
+        existing.status = SerialStatus.IN_STOCK;
+        existing.productId = product.id;
+        if (notes) existing.notes = notes;
+        saved.push(await this.serialRepo.save(existing));
+      } else {
+        const item = this.serialRepo.create({
+          tenantId,
+          productId: product.id,
+          serialNumber: sn,
+          status: SerialStatus.IN_STOCK,
+          notes: notes || 'Registered in inventory',
+        });
+        saved.push(await this.serialRepo.save(item));
+      }
+    }
+    return saved;
   }
 }

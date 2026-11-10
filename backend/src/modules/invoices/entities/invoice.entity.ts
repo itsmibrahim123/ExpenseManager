@@ -1,12 +1,32 @@
 import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseTenantEntity } from '../../../common/entities/base-tenant.entity';
 import { InvoiceItem } from './invoice-item.entity';
+import { InvoicePayment } from './invoice-payment.entity';
 import { Customer } from '../../customers/entities/customer.entity';
+
+export enum InvoiceType {
+  SALE = 'SALE',
+  PURCHASE = 'PURCHASE',
+  RETURN = 'RETURN',
+}
 
 @Entity('invoices')
 export class Invoice extends BaseTenantEntity {
   @Column({ name: 'invoice_number', nullable: false })
   invoiceNumber: string;
+
+  @Column({
+    name: 'invoice_type',
+    type: 'varchar',
+    default: InvoiceType.SALE,
+  })
+  invoiceType: InvoiceType;
+
+  @Column({ name: 'parent_invoice_id', nullable: true })
+  parentInvoiceId: number;
+
+  @Column({ name: 'supplier_id', nullable: true })
+  supplierId: number;
 
   @Column({ name: 'customer_id', nullable: true })
   customerId: number;
@@ -109,4 +129,7 @@ export class Invoice extends BaseTenantEntity {
 
   @OneToMany(() => InvoiceItem, (item) => item.invoice, { cascade: true, eager: true })
   items: InvoiceItem[];
+
+  @OneToMany(() => InvoicePayment, (payment) => payment.invoice, { cascade: true, eager: true })
+  payments: InvoicePayment[];
 }

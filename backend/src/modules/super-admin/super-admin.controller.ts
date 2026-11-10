@@ -3,12 +3,15 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   HttpStatus,
   HttpCode,
+  Req,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import {
@@ -70,6 +73,38 @@ export class SuperAdminController {
   @Get('metrics')
   async getPlatformMetrics() {
     return this.superAdminService.getPlatformMetrics();
+  }
+
+  @Get('users')
+  async getAllUsers(
+    @Query('query') query?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.superAdminService.getAllUsers(query, role, status);
+  }
+
+  @Post('users')
+  @HttpCode(HttpStatus.CREATED)
+  async createPlatformUser(@Body() data: any) {
+    return this.superAdminService.createPlatformUser(data);
+  }
+
+  @Put('users/:id/access')
+  async updateUserAccess(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: any,
+  ) {
+    return this.superAdminService.updateUserAccess(id, data);
+  }
+
+  @Delete('users/:id')
+  async deleteUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ) {
+    const currentUserId = req.user?.id || req.user?.userId;
+    return this.superAdminService.deletePlatformUser(id, currentUserId);
   }
 
   @Get('tenants/:id/settings')

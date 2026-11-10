@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { TenantService } from '../tenant/tenant.service';
+import { SuperAdminService } from '../super-admin/super-admin.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UserRole, UserStatus } from '../users/entities/user.entity';
@@ -16,6 +17,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly tenantService: TenantService,
+    private readonly superAdminService: SuperAdminService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -99,21 +101,38 @@ export class AuthService {
       throw new BadRequestException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const user = await this.usersService.save({
-      fullName: registerDto.fullName,
+    if (!registerDto.storeName || registerDto.storeName.trim() === '') {
+      throw new BadRequestException('Store / Company name is required for registration');
+    }
+
+    const rawSlug = registerDto.slug && registerDto.slug.trim() !== ''
+      ? registerDto.slug
+      : registerDto.storeName;
+
+    const baseSlug = rawSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'store';
+    const uniqueSlug = `${baseSlug}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const provisionResult = await this.superAdminService.provisionTenant({
+      storeName: registerDto.storeName,
+      slug: registerDto.slug ? baseSlug : uniqueSlug,
+      ownerName: registerDto.fullName,
+      ownerEmail: registerDto.email,
+      ownerPassword: registerDto.password,
+      contactPhone: registerDto.contactPhone,
+      currencyCode: registerDto.currencyCode || registerDto.preferredCurrency || 'PKR',
+      planTier: registerDto.planTier,
+      trialDays: 14,
+    });
+
+    const loginResult = await this.login({
       email: registerDto.email,
-      passwordHash: hashedPassword,
-      role: UserRole.ROLE_STORE_ADMIN,
-      userStatus: UserStatus.ACTIVE,
-      status: 'ACTIVE',
-      preferredCurrency: registerDto.preferredCurrency || 'USD',
-      tenantId: null,
-    } as any);
+      password: registerDto.password,
+    });
 
     return {
-      message: 'User registered successfully',
-      userId: user.id,
+      message: 'Store tenant provisioned successfully',
+      ...loginResult,
+      tenant: provisionResult,
     };
   }
 }

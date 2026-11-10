@@ -21,7 +21,7 @@ const TransactionDialog = ({ open, onClose, onSuccess }) => {
     const [merchants, setMerchants] = useState([]);
     const [error, setError] = useState('');
     
-    const { control, handleSubmit, reset, watch, setValue } = useForm({
+    const { control, handleSubmit, reset, watch } = useForm({
         defaultValues: {
             transactionDate: new Date().toISOString().split('T')[0],
             status: 'CLEARED',

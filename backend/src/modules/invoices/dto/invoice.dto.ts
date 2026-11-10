@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { InvoiceType } from '../entities/invoice.entity';
 
 export class InvoiceItemRequestDto {
   @IsNumber()
@@ -28,12 +30,29 @@ export class InvoiceItemRequestDto {
   @IsNumber()
   @IsOptional()
   discountAmount?: number;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  serialNumbers?: string[];
 }
 
 export class CreateInvoiceDto {
   @IsNumber()
   @IsNotEmpty()
   userId: number;
+
+  @IsEnum(InvoiceType)
+  @IsOptional()
+  invoiceType?: InvoiceType;
+
+  @IsNumber()
+  @IsOptional()
+  parentInvoiceId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  supplierId?: number;
 
   @IsNumber()
   @IsOptional()
@@ -59,8 +78,33 @@ export class CreateInvoiceDto {
   @IsOptional()
   paidAmount?: number;
 
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => InvoiceItemRequestDto)
   items: InvoiceItemRequestDto[];
+}
+
+export class RecordPaymentDto {
+  @IsNumber()
+  @IsNotEmpty()
+  amount: number;
+
+  @IsString()
+  @IsNotEmpty()
+  paymentMethod: string;
+
+  @IsString()
+  @IsOptional()
+  referenceNotes?: string;
+
+  @IsNumber()
+  @IsOptional()
+  accountId?: number;
+
+  @IsOptional()
+  paymentDate?: Date;
 }

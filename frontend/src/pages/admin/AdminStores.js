@@ -2,14 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, TextField, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
-    Grid, MenuItem, Select, FormControl, InputLabel, Alert, CircularProgress
+    Grid, MenuItem, Select, FormControl, InputLabel, Alert, CircularProgress, Card,
+    CardContent
 } from '@mui/material';
 import AddBusinessIcon from '@mui/icons-material/AddBusiness';
 import SearchIcon from '@mui/icons-material/Search';
 import EditCalendarIcon from '@mui/icons-material/EditCalendar';
 import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import StarIcon from '@mui/icons-material/Star';
+import DiamondIcon from '@mui/icons-material/Diamond';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import { getTenants, createTenant, updateTenantStatus, updateSubscription } from '../../api/adminApi';
+
+const CURRENCIES = ['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD'];
 
 const AdminStores = () => {
     const [tenants, setTenants] = useState([]);
@@ -51,14 +58,14 @@ const AdminStores = () => {
 
     const showAlert = (message, severity = 'success') => {
         setAlert({ show: true, message, severity });
-        setTimeout(() => setAlert({ show: false, message: '', severity: 'success' }), 4000);
+        setTimeout(() => setAlert({ show: false, message: '', severity: 'success' }), 4500);
     };
 
     const handleOnboardSubmit = async (e) => {
         e.preventDefault();
         try {
             await createTenant(onboardForm);
-            showAlert('New store tenant provisioned successfully with initial baseline data!');
+            showAlert(`Store tenant '${onboardForm.storeName}' provisioned successfully!`);
             setOnboardModalOpen(false);
             fetchTenants();
             setOnboardForm({
@@ -98,12 +105,90 @@ const AdminStores = () => {
         return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     };
 
+    const getPlanBadge = (plan) => {
+        switch (plan) {
+            case 'ENTERPRISE':
+                return (
+                    <Chip
+                        icon={<DiamondIcon style={{ fontSize: 14 }} />}
+                        label="Enterprise"
+                        size="small"
+                        sx={{ bgcolor: '#fef3c7', color: '#b45309', fontWeight: 700 }}
+                    />
+                );
+            case 'PROFESSIONAL':
+                return (
+                    <Chip
+                        icon={<WorkspacePremiumIcon style={{ fontSize: 14 }} />}
+                        label="Pro"
+                        size="small"
+                        sx={{ bgcolor: '#ede9fe', color: '#6d28d9', fontWeight: 700 }}
+                    />
+                );
+            case 'STARTER':
+            default:
+                return (
+                    <Chip
+                        icon={<StarIcon style={{ fontSize: 14 }} />}
+                        label="Starter"
+                        size="small"
+                        sx={{ bgcolor: '#e0f2fe', color: '#0369a1', fontWeight: 700 }}
+                    />
+                );
+        }
+    };
+
+    const getStatusChip = (status) => {
+        switch (status) {
+            case 'ACTIVE':
+                return (
+                    <Chip
+                        label="Active"
+                        size="small"
+                        sx={{ bgcolor: '#dcfce7', color: '#15803d', fontWeight: 700 }}
+                    />
+                );
+            case 'TRIAL':
+                return (
+                    <Chip
+                        label="In Trial"
+                        size="small"
+                        sx={{ bgcolor: '#eff6ff', color: '#1d4ed8', fontWeight: 700 }}
+                    />
+                );
+            case 'SUSPENDED':
+                return (
+                    <Chip
+                        label="Suspended"
+                        size="small"
+                        sx={{ bgcolor: '#fee2e2', color: '#b91c1c', fontWeight: 700 }}
+                    />
+                );
+            default:
+                return <Chip label={status} size="small" />;
+        }
+    };
+
+    // Metric counts
+    const totalStores = tenants.length;
+    const activeStores = tenants.filter((t) => t.status === 'ACTIVE').length;
+    const trialStores = tenants.filter((t) => t.status === 'TRIAL').length;
+    const suspendedStores = tenants.filter((t) => t.status === 'SUSPENDED').length;
+
     return (
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h4" fontWeight="bold">
-                    Multi-Tenant Store Management
-                </Typography>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                    <StorefrontIcon color="primary" sx={{ fontSize: 34 }} />
+                    <Box>
+                        <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">
+                            Store Tenant Management
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Super Admin multi-tenant store provisioning, subscription control, and metrics
+                        </Typography>
+                    </Box>
+                </Box>
                 <Button
                     variant="contained"
                     startIcon={<AddBusinessIcon />}
@@ -115,13 +200,65 @@ const AdminStores = () => {
             </Box>
 
             {alert.show && (
-                <Alert severity={alert.severity} sx={{ mb: 2 }}>
+                <Alert severity={alert.severity} sx={{ mb: 3, borderRadius: 2 }}>
                     {alert.message}
                 </Alert>
             )}
 
+            {/* Metric Summary Cards */}
+            <Grid container spacing={2} mb={3}>
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card elevation={1}>
+                        <CardContent sx={{ p: 2.5 }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                TOTAL STORE TENANTS
+                            </Typography>
+                            <Typography variant="h4" fontWeight={800} color="#0f172a" mt={0.5}>
+                                {totalStores}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card elevation={1}>
+                        <CardContent sx={{ p: 2.5 }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                ACTIVE STORES
+                            </Typography>
+                            <Typography variant="h4" fontWeight={800} color="#16a34a" mt={0.5}>
+                                {activeStores}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card elevation={1}>
+                        <CardContent sx={{ p: 2.5 }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                TRIAL STORES
+                            </Typography>
+                            <Typography variant="h4" fontWeight={800} color="#2563eb" mt={0.5}>
+                                {trialStores}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card elevation={1}>
+                        <CardContent sx={{ p: 2.5 }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                SUSPENDED
+                            </Typography>
+                            <Typography variant="h4" fontWeight={800} color="#dc2626" mt={0.5}>
+                                {suspendedStores}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+
             {/* Filter Bar */}
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: 2, mb: 3 }} elevation={1}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={8}>
                         <TextField
@@ -131,7 +268,7 @@ const AdminStores = () => {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             InputProps={{
-                                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
+                                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
                             }}
                         />
                     </Grid>
@@ -155,64 +292,63 @@ const AdminStores = () => {
             </Paper>
 
             {/* Stores Data Table */}
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} elevation={1}>
                 <Table>
-                    <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                    <TableHead>
                         <TableRow>
-                            <TableCell><strong>Store Name & Slug</strong></TableCell>
-                            <TableCell><strong>Owner Contact</strong></TableCell>
-                            <TableCell align="center"><strong>Plan Tier</strong></TableCell>
-                            <TableCell align="center"><strong>Status</strong></TableCell>
-                            <TableCell><strong>Expires At</strong></TableCell>
-                            <TableCell align="center"><strong>Actions</strong></TableCell>
+                            <TableCell>Store Name & Slug</TableCell>
+                            <TableCell>Owner Contact</TableCell>
+                            <TableCell align="center">Plan Tier</TableCell>
+                            <TableCell align="center">Status</TableCell>
+                            <TableCell>Expiration Date</TableCell>
+                            <TableCell align="center">Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                                     <CircularProgress />
                                 </TableCell>
                             </TableRow>
                         ) : tenants.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                                    No store tenants found.
+                                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                    No store tenants found matching criteria.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            tenants.map((t) => {
-                                let statusColor = 'success';
-                                if (t.status === 'SUSPENDED' || t.status === 'CANCELLED') statusColor = 'error';
-                                else if (t.status === 'TRIAL') statusColor = 'info';
-
-                                return (
-                                    <TableRow key={t.id} hover>
-                                        <TableCell>
-                                            <Typography variant="body2" fontWeight="bold">{t.storeName}</Typography>
-                                            <Typography variant="caption" color="textSecondary">slug: {t.slug}</Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2">{t.ownerName || 'Store Owner'}</Typography>
-                                            <Typography variant="caption" color="textSecondary">{t.contactEmail}</Typography>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip label={t.planTier} variant="outlined" color="primary" size="small" />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip label={t.status} color={statusColor} size="small" />
-                                        </TableCell>
-                                        <TableCell>
+                            tenants.map((t) => (
+                                <TableRow key={t.id} hover>
+                                    <TableCell>
+                                        <Typography variant="subtitle2" fontWeight={700}>
+                                            {t.storeName}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            slug: <strong>{t.slug}</strong> | {t.currencyCode || 'PKR'}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2">{t.ownerName || 'Store Owner'}</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {t.contactEmail}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">{getPlanBadge(t.planTier)}</TableCell>
+                                    <TableCell align="center">{getStatusChip(t.status)}</TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2">
                                             {t.expiresAt ? new Date(t.expiresAt).toLocaleDateString() : 'Lifetime'}
-                                        </TableCell>
-                                        <TableCell align="center">
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Box display="flex" justifyContent="center" gap={1}>
                                             <Button
                                                 size="small"
                                                 variant="outlined"
                                                 color={t.status === 'SUSPENDED' ? 'success' : 'error'}
                                                 startIcon={t.status === 'SUSPENDED' ? <PlayCircleIcon /> : <PauseCircleIcon />}
                                                 onClick={() => handleToggleStatus(t)}
-                                                sx={{ mr: 1 }}
                                             >
                                                 {t.status === 'SUSPENDED' ? 'Activate' : 'Suspend'}
                                             </Button>
@@ -226,26 +362,29 @@ const AdminStores = () => {
                                                     setExtendModalOpen(true);
                                                 }}
                                             >
-                                                Renew / Tier
+                                                Renew
                                             </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
+                            ))
                         )}
                     </TableBody>
                 </Table>
             </TableContainer>
 
-            {/* Onboard New Store Modal Wizard */}
+            {/* Provision Store Tenant Modal */}
             <Dialog open={onboardModalOpen} onClose={() => setOnboardModalOpen(false)} maxWidth="md" fullWidth>
                 <form onSubmit={handleOnboardSubmit}>
-                    <DialogTitle>Provision New SaaS Store Tenant</DialogTitle>
+                    <DialogTitle fontWeight={700}>Provision New SaaS Store Tenant</DialogTitle>
                     <DialogContent dividers>
-                        <Grid container spacing={2}>
+                        <Typography variant="caption" color="primary" fontWeight={700} display="block" mb={2}>
+                            STORE PROFILE & TENANT ISOLATION
+                        </Typography>
+                        <Grid container spacing={2.5} mb={3}>
                             <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Store Name"
+                                    label="Store Business Name"
                                     required
                                     fullWidth
                                     value={onboardForm.storeName}
@@ -254,20 +393,65 @@ const AdminStores = () => {
                                         setOnboardForm({
                                             ...onboardForm,
                                             storeName: name,
-                                            slug: autoGenerateSlug(name)
+                                            slug: autoGenerateSlug(name),
                                         });
                                     }}
+                                    placeholder="e.g. Apex Hypermarket"
                                 />
                             </Grid>
                             <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Store Slug (URL Identifier)"
+                                    label="Unique URL Slug"
                                     required
                                     fullWidth
                                     value={onboardForm.slug}
                                     onChange={(e) => setOnboardForm({ ...onboardForm, slug: e.target.value })}
+                                    helperText="app.expensemanager.com/{slug}"
                                 />
                             </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    label="Operating Currency"
+                                    select
+                                    fullWidth
+                                    value={onboardForm.currencyCode}
+                                    onChange={(e) => setOnboardForm({ ...onboardForm, currencyCode: e.target.value })}
+                                >
+                                    {CURRENCIES.map((c) => (
+                                        <MenuItem key={c} value={c}>
+                                            {c}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    label="Plan Tier"
+                                    select
+                                    fullWidth
+                                    value={onboardForm.planTier}
+                                    onChange={(e) => setOnboardForm({ ...onboardForm, planTier: e.target.value })}
+                                >
+                                    <MenuItem value="STARTER">Starter Tier</MenuItem>
+                                    <MenuItem value="PROFESSIONAL">Professional Tier</MenuItem>
+                                    <MenuItem value="ENTERPRISE">Enterprise Tier</MenuItem>
+                                </TextField>
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    label="Initial Trial (Days)"
+                                    type="number"
+                                    fullWidth
+                                    value={onboardForm.trialDays}
+                                    onChange={(e) => setOnboardForm({ ...onboardForm, trialDays: Number(e.target.value) })}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Typography variant="caption" color="primary" fontWeight={700} display="block" mb={2}>
+                            OWNER ACCOUNT & CREDENTIALS
+                        </Typography>
+                        <Grid container spacing={2.5}>
                             <Grid item xs={12} sm={6}>
                                 <TextField
                                     label="Store Owner Full Name"
@@ -279,7 +463,15 @@ const AdminStores = () => {
                             </Grid>
                             <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Store Owner Email"
+                                    label="Contact Phone"
+                                    fullWidth
+                                    value={onboardForm.contactPhone}
+                                    onChange={(e) => setOnboardForm({ ...onboardForm, contactPhone: e.target.value })}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    label="Owner Login Email"
                                     type="email"
                                     required
                                     fullWidth
@@ -289,7 +481,7 @@ const AdminStores = () => {
                             </Grid>
                             <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Owner Password"
+                                    label="Temporary Owner Password"
                                     type="password"
                                     required
                                     fullWidth
@@ -297,97 +489,55 @@ const AdminStores = () => {
                                     onChange={(e) => setOnboardForm({ ...onboardForm, ownerPassword: e.target.value })}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={6}>
-                                <TextField
-                                    label="Contact Phone (Optional)"
-                                    fullWidth
-                                    value={onboardForm.contactPhone}
-                                    onChange={(e) => setOnboardForm({ ...onboardForm, contactPhone: e.target.value })}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <FormControl fullWidth required>
-                                    <InputLabel>Base Currency</InputLabel>
-                                    <Select
-                                        value={onboardForm.currencyCode}
-                                        label="Base Currency"
-                                        onChange={(e) => setOnboardForm({ ...onboardForm, currencyCode: e.target.value })}
-                                    >
-                                        <MenuItem value="PKR">PKR (Pakistani Rupee)</MenuItem>
-                                        <MenuItem value="USD">USD (US Dollar)</MenuItem>
-                                        <MenuItem value="EUR">EUR (Euro)</MenuItem>
-                                        <MenuItem value="GBP">GBP (British Pound)</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <FormControl fullWidth required>
-                                    <InputLabel>Subscription Tier</InputLabel>
-                                    <Select
-                                        value={onboardForm.planTier}
-                                        label="Subscription Tier"
-                                        onChange={(e) => setOnboardForm({ ...onboardForm, planTier: e.target.value })}
-                                    >
-                                        <MenuItem value="STARTER">STARTER</MenuItem>
-                                        <MenuItem value="PROFESSIONAL">PROFESSIONAL</MenuItem>
-                                        <MenuItem value="ENTERPRISE">ENTERPRISE</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <TextField
-                                    label="Trial Duration (Days)"
-                                    type="number"
-                                    required
-                                    fullWidth
-                                    value={onboardForm.trialDays}
-                                    onChange={(e) => setOnboardForm({ ...onboardForm, trialDays: parseInt(e.target.value) || 14 })}
-                                />
-                            </Grid>
                         </Grid>
                     </DialogContent>
-                    <DialogActions>
+                    <DialogActions sx={{ px: 3, py: 2 }}>
                         <Button onClick={() => setOnboardModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained">Provision Store Tenant</Button>
+                        <Button type="submit" variant="contained">
+                            Provision Store Instance
+                        </Button>
                     </DialogActions>
                 </form>
             </Dialog>
 
-            {/* Subscription Renewal Modal */}
-            <Dialog open={extendModalOpen} onClose={() => setExtendModalOpen(false)} maxWidth="xs" fullWidth>
+            {/* Renew / Update Subscription Modal */}
+            <Dialog open={extendModalOpen} onClose={() => setExtendModalOpen(false)} maxWidth="sm" fullWidth>
                 <form onSubmit={handleExtendSubmit}>
-                    <DialogTitle>Extend Subscription: {selectedTenant?.storeName}</DialogTitle>
+                    <DialogTitle fontWeight={700}>Renew & Update Subscription</DialogTitle>
                     <DialogContent dividers>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <FormControl fullWidth required sx={{ mb: 2 }}>
-                                    <InputLabel>Update Plan Tier</InputLabel>
-                                    <Select
-                                        value={extendForm.planTier}
-                                        label="Update Plan Tier"
-                                        onChange={(e) => setExtendForm({ ...extendForm, planTier: e.target.value })}
-                                    >
-                                        <MenuItem value="STARTER">STARTER</MenuItem>
-                                        <MenuItem value="PROFESSIONAL">PROFESSIONAL</MenuItem>
-                                        <MenuItem value="ENTERPRISE">ENTERPRISE</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" mb={2}>
+                            Updating store subscription for <strong>{selectedTenant?.storeName}</strong> ({selectedTenant?.slug})
+                        </Typography>
+                        <Grid container spacing={2.5}>
+                            <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Extend Expiration By (Days)"
+                                    label="Subscription Tier"
+                                    select
+                                    fullWidth
+                                    value={extendForm.planTier}
+                                    onChange={(e) => setExtendForm({ ...extendForm, planTier: e.target.value })}
+                                >
+                                    <MenuItem value="STARTER">Starter Tier</MenuItem>
+                                    <MenuItem value="PROFESSIONAL">Professional Tier</MenuItem>
+                                    <MenuItem value="ENTERPRISE">Enterprise Tier</MenuItem>
+                                </TextField>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    label="Extend Subscription By (Days)"
                                     type="number"
-                                    required
                                     fullWidth
                                     value={extendForm.extendDays}
-                                    onChange={(e) => setExtendForm({ ...extendForm, extendDays: parseInt(e.target.value) || 30 })}
+                                    onChange={(e) => setExtendForm({ ...extendForm, extendDays: Number(e.target.value) })}
                                 />
                             </Grid>
                         </Grid>
                     </DialogContent>
-                    <DialogActions>
+                    <DialogActions sx={{ px: 3, py: 2 }}>
                         <Button onClick={() => setExtendModalOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained" color="success">Update Subscription</Button>
+                        <Button type="submit" variant="contained">
+                            Confirm Extension
+                        </Button>
                     </DialogActions>
                 </form>
             </Dialog>

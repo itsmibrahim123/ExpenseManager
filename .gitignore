@@ -1,1 +1,14 @@
+# OS
 .DS_Store
+*.nosync
+.nosync
+
+# Node
+node_modules/
+*.nosync/
+dist/
+build/
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep

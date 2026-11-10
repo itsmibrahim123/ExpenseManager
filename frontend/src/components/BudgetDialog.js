@@ -18,7 +18,7 @@ const BudgetDialog = ({ open, onClose, onSuccess }) => {
     const [categories, setCategories] = useState([]);
     const [error, setError] = useState('');
 
-    const { control, handleSubmit, reset, watch, setValue } = useForm({
+    const { control, handleSubmit, watch } = useForm({
         defaultValues: {
             name: '',
             periodType: 'MONTHLY',

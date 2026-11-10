@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class ProductDto {
   id: number;
@@ -36,18 +37,22 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   costPrice?: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   sellingPrice?: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   currentStock?: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   reorderLevel?: number;
@@ -56,6 +61,7 @@ export class CreateProductDto {
   @IsOptional()
   unit?: string;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   categoryId?: number;
@@ -86,18 +92,22 @@ export class UpdateProductDto {
   @IsOptional()
   description?: string;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   costPrice?: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   sellingPrice?: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   currentStock?: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   reorderLevel?: number;
@@ -106,6 +116,7 @@ export class UpdateProductDto {
   @IsOptional()
   unit?: string;
 
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   categoryId?: number;

@@ -11,7 +11,10 @@ import { StockMovement } from '../modules/stock/entities/stock-movement.entity';
 import { Customer } from '../modules/customers/entities/customer.entity';
 import { Invoice } from '../modules/invoices/entities/invoice.entity';
 import { InvoiceItem } from '../modules/invoices/entities/invoice-item.entity';
+import { InvoicePayment } from '../modules/invoices/entities/invoice-payment.entity';
+import { ProductSerial } from '../modules/products/entities/product-serial.entity';
 import { DailyRegisterSession } from '../modules/register/entities/daily-register-session.entity';
+import { RegisterMovement } from '../modules/register/entities/register-movement.entity';
 import { Account } from '../modules/accounts/entities/account.entity';
 import { Transaction } from '../modules/transactions/entities/transaction.entity';
 import { Budget } from '../modules/budgets/entities/budget.entity';
@@ -24,12 +27,15 @@ export const ALL_ENTITIES = [
   TenantSettings,
   User,
   Product,
+  ProductSerial,
   Category,
   StockMovement,
   Customer,
   Invoice,
   InvoiceItem,
+  InvoicePayment,
   DailyRegisterSession,
+  RegisterMovement,
   Account,
   Transaction,
   Budget,

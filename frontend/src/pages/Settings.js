@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
     Box, Typography, Tabs, Tab, Paper, List, ListItem, ListItemText, 
     IconButton, TextField, Button, Dialog, DialogTitle, DialogContent, 
-    DialogActions, Chip, Switch
+    DialogActions
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -54,10 +54,6 @@ const SimpleCrud = ({ title, service, user, fields = ['name'] }) => {
     const handleDelete = async (id) => {
         if (window.confirm('Delete this item?')) {
             try {
-                const idField = title === 'Categories' ? 'categoryId' : (title === 'Merchants' ? 'merchantId' : (title === 'Payment Methods' ? 'paymentMethodId' : 'tagId'));
-                // Wait, response DTOs have specific IDs. I need to be careful.
-                // Categories: categoryId. Merchants: merchantId. PaymentMethods: paymentMethodId. Tags: tagId.
-                // The service.delete takes an ID.
                 await service.delete(id);
                 fetchItems();
             } catch (error) {

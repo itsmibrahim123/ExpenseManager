@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { 
     Box, Typography, Button, Grid, Paper, Chip, 
-    CircularProgress, IconButton, Collapse
+    CircularProgress, IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DeleteIcon from '@mui/icons-material/Delete';
 import BudgetsService from '../api/budgetsService';
 import BudgetDialog from '../components/BudgetDialog';
@@ -17,7 +15,6 @@ const Budgets = () => {
     const [budgets, setBudgets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [openDialog, setOpenDialog] = useState(false);
-    const [expandedBudget, setExpandedBudget] = useState(null); // ID of expanded budget
 
     const fetchBudgets = async () => {
         setLoading(true);
@@ -43,20 +40,6 @@ const Budgets = () => {
             } catch (error) {
                 alert('Failed to delete budget');
             }
-        }
-    };
-
-    const handleExpand = async (id) => {
-        if (expandedBudget === id) {
-            setExpandedBudget(null);
-        } else {
-            setExpandedBudget(id);
-            // If we needed to fetch items separately, we would do it here. 
-            // But usually getAll returns simplified objects. 
-            // For now, I won't fetch items for simplified view to save time, unless required.
-            // Wait, I should probably fetch details to show items? 
-            // The endpoint `/budgets/{id}` returns items. 
-            // I'll implement a details fetch if I want to show items inside the card.
         }
     };
 

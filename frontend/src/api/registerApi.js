@@ -19,3 +19,17 @@ export const getDailySummary = (date, userId) => {
         params: { date, userId }
     });
 };
+
+export const addCashMovement = (data) => {
+    return api.post('/register/movement', data);
+};
+
+export const getSessionMovements = (sessionId) => {
+    return api.get(`/register/movements/${sessionId}`);
+};
+
+export const getRegisterHistory = (startDate, endDate, userId) => {
+    return api.get('/register/history', {
+        params: { startDate, endDate, userId }
+    });
+};

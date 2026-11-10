@@ -2,9 +2,12 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/auth';
 
-export const register = (fullName, email, password, preferredCurrency) => {
+export const register = (data, email, password, preferredCurrency) => {
+  if (typeof data === 'object' && data !== null) {
+    return axios.post(`${API_URL}/register`, data);
+  }
   return axios.post(`${API_URL}/register`, {
-    fullName,
+    fullName: data,
     email,
     password,
     preferredCurrency,
@@ -22,8 +25,10 @@ export const logout = () => {
   localStorage.removeItem('token');
 };
 
-export default {
+const authService = {
   register,
   login,
   logout,
 };
+
+export default authService;

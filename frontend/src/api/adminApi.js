@@ -31,3 +31,20 @@ export const getTenantSettings = (id) => {
 export const updateTenantSettings = (id, data) => {
     return api.put(`/admin/tenants/${id}/settings`, data);
 };
+
+// Super Admin User & Role Access Management
+export const getAllAdminUsers = (params) => {
+    return api.get('/admin/users', { params });
+};
+
+export const updateAdminUserAccess = (id, data) => {
+    return api.put(`/admin/users/${id}/access`, data);
+};
+
+export const createAdminUser = (data) => {
+    return api.post('/admin/users', data);
+};
+
+export const deleteAdminUser = (id) => {
+    return api.delete(`/admin/users/${id}`);
+};

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { login as loginApi } from '../api/auth';
+import { login as loginApi, register as registerApi } from '../api/auth';
 
 const AuthContext = createContext();
 
@@ -51,6 +51,33 @@ export const AuthProvider = ({ children }) => {
         return login('guest@example.com', 'guest123');
     };
 
+    const registerUser = async (formData) => {
+        const res = await registerApi(formData);
+        const data = res.data;
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            if (data.tenantId) localStorage.setItem('tenantId', data.tenantId);
+            if (data.storeName) localStorage.setItem('storeName', data.storeName);
+            if (data.tenantSettings) localStorage.setItem('tenantSettings', JSON.stringify(data.tenantSettings));
+
+            const userInfo = {
+                id: data.userId,
+                userId: data.userId,
+                fullName: data.fullName,
+                email: data.email
+            };
+            localStorage.setItem('user', JSON.stringify(userInfo));
+
+            setUser(userInfo);
+            setRole(data.role);
+            setTenantId(data.tenantId);
+            setStoreName(data.storeName);
+            setTenantSettings(data.tenantSettings);
+        }
+        return data;
+    };
+
     const logout = () => {
         localStorage.clear();
         setUser(null);
@@ -76,6 +103,8 @@ export const AuthProvider = ({ children }) => {
             loading,
             login,
             loginAsGuest,
+            registerUser,
+            register: registerUser,
             logout,
             isSuperAdmin,
             isStoreAdmin,

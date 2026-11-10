@@ -1,5 +1,6 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 import { BaseTenantEntity } from '../../../common/entities/base-tenant.entity';
+import { RegisterMovement } from './register-movement.entity';
 
 @Entity('daily_register_sessions')
 export class DailyRegisterSession extends BaseTenantEntity {
@@ -69,4 +70,7 @@ export class DailyRegisterSession extends BaseTenantEntity {
 
   @Column({ nullable: true })
   notes: string;
+
+  @OneToMany(() => RegisterMovement, (m) => m.session, { cascade: true, eager: true })
+  movements: RegisterMovement[];
 }
