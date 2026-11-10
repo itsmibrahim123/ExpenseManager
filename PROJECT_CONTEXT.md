@@ -85,7 +85,7 @@ ExpenseManager/
 │   │   ├── App.js                        # Client routing, SuperAdmin and Tenant Protected routes
 │   │   ├── api/                          # Modular Axios API services
 │   │   │   ├── axios.js                  # Configured Axios instance with token & multipart boundary handling
-│   │   │   ├── adminApi.js               # Super Admin tenant and platform user endpoints
+│   │   │   ├── adminApi.js               # Super Admin platform governance, user directory, and store lifecycle API
 │   │   │   ├── auth.js & authService.js  # User login and registration
 │   │   │   ├── inventoryApi.js           # Products, stock restock, serial numbers, image upload
 │   │   │   ├── invoiceApi.js             # Invoices, post-checkout payments, PDF generation
@@ -124,7 +124,7 @@ ExpenseManager/
 │   │   │   ├── Budgets.js                # Expense threshold monitoring
 │   │   │   ├── Settings.js               # Store profile, tax rates, receipt headers/footers
 │   │   │   └── admin/                    # Super Admin Platform Console
-│   │   │       ├── AdminDashboard.js     # Platform KPIs, tenant table, complete user access dashboard
+│   │   │       ├── AdminDashboard.js     # Platform governance KPIs, user directory table, status switches, and access modals
 │   │   │       └── AdminStores.js        # Detailed store tenant management, status toggles, plan upgrades
 │   │   └── theme/
 │   │       └── theme.js                  # Customized Material-UI v7 theme (typography, palette, elevations)
@@ -204,18 +204,49 @@ erDiagram
   - Historical session endpoint `GET /api/register/history` and daily summary endpoint `GET /api/register/daily-summary`.
   - Frontend [`DailyRegister.js`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/frontend/src/pages/DailyRegister.js) and [`Reports.js`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/frontend/src/pages/Reports.js) feature a Daily Executive Summary tab displaying gross sales, gross profits, returns, payment method distributions, and top-selling products.
 
-### 5.4 Super Admin SaaS Control & User Access Management
-- **Tenant Provisioning:**
-  - Atomic onboarding via `superAdminService.provisionTenant()` creates:
-    1. Tenant record (slug, store name, plan, trial expiration).
-    2. Tenant settings (tax numbers, default receipt headers/footers).
-    3. Store Admin user (`ROLE_STORE_ADMIN`).
-    4. Default Cash Drawer and Bank Account in the financial chart of accounts.
-    5. Default Walk-in Customer record.
-    6. Default Income and Expense categories.
-    7. Demo product catalog.
-- **Super Admin User Access Dashboard:**
-  - Located at [`AdminDashboard.js`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/frontend/src/pages/admin/AdminDashboard.js), Super Admins can view all platform users, filter by store, role, or status, reassign roles, toggle active/suspended statuses, reset passwords, or provision new staff.
+### 5.4 Super Admin Platform Governance & Strict Tenant Privacy
+
+#### 1. Architectural Boundary & Data Privacy Principle
+- **Platform Governance Scope (Super Admin):**
+  - Manages tenant store lifecycles (provisioning, plan tiers, trial extensions, active/suspended status).
+  - Manages platform user accounts across tenants (roles, statuses, administrative password resets, store assignments).
+  - Monitors high-level platform-wide operational KPIs (total stores, active vs. suspended stores, user counts by role, expiring subscriptions).
+- **Tenant Scope (Strictly Isolated Business Data):**
+  - Store sales, invoices, daily registers, cash drawer movements, and ledger transactions belong strictly to that store tenant (`tenantId`).
+  - The Super Admin console is strictly prohibited from querying, aggregating, or displaying store-level sales figures, POS volumes, customer invoices, or cashier financial performance. Every store owner's financial data remains completely confidential.
+  - The `Invoice` repository has been completely removed from [`SuperAdminService`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/backend/src/modules/super-admin/super-admin.service.ts) and [`SuperAdminModule`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/backend/src/modules/super-admin/super-admin.module.ts).
+
+#### 2. Platform Governance Metrics (`GET /admin/metrics`)
+- Returns `PlatformGovernanceMetricsDto` containing pure platform health indicators:
+  - `totalTenants`: Total onboarded stores.
+  - `activeTenants`: Stores currently active.
+  - `suspendedTenants`: Stores suspended by platform administration.
+  - `trialTenants`: Stores currently in trial status.
+  - `totalUsers`: Total registered platform accounts.
+  - `usersByRole`: Distribution of accounts across `superAdmin`, `storeAdmin`, `inventoryManager`, and `cashier`.
+  - `expiringSubscriptionsCount`: Active or trial store subscriptions ending in $\le 7$ days requiring review.
+
+#### 3. Sanitized User Directory & Access Management (`/admin/users`)
+- Returns user directory data joined only with the assigned `Tenant` record (`id`, `fullName`, `email`, `role`, `status`, `userStatus`, `tenantId`, `tenantName`, `createdAt`, `lastLoginAt`).
+- Supports query filters: `search` (name, email, or store), `role`, `tenantId` (`ALL`, `PLATFORM`, or UUID), and `status` (`ACTIVE`, `SUSPENDED`).
+- Administrative operations:
+  - `POST /admin/users`: Provision platform users directly with initial role and assigned store tenant.
+  - `PUT /admin/users/:id/access`: Reassign roles, update store assignments, and toggle active/suspended statuses.
+  - `PUT /admin/users/:id/reset-password`: Direct administrative password resets (minimum 6 characters).
+  - `DELETE /admin/users/:id`: Safe account deletion with self-deletion protection.
+
+#### 4. Account Suspension Enforcement
+- When an account is marked `SUSPENDED` or `INACTIVE` (or their assigned store is suspended), [`AuthService.login()`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/backend/src/modules/auth/auth.service.ts) blocks login with `401 Unauthorized` (`"Your account has been suspended. Please contact your platform administrator."`).
+
+#### 5. Tenant Provisioning Workflow
+- Atomic onboarding via `superAdminService.provisionTenant()` creates:
+  1. Tenant record (slug, store name, plan, trial expiration).
+  2. Tenant settings (tax numbers, default receipt headers/footers).
+  3. Store Admin user (`ROLE_STORE_ADMIN`).
+  4. Default Cash Drawer and Bank Account in the financial chart of accounts.
+  5. Default Walk-in Customer record.
+  6. Default Income and Expense categories.
+  7. Demo product catalog.
 - **Tenant Staff Management:**
   - Store Admins can visit [`StaffManagement.js`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/frontend/src/pages/StaffManagement.js) to invite team members and assign operational roles (`ROLE_CASHIER` or `ROLE_INVENTORY_MANAGER`).
 
@@ -225,16 +256,16 @@ erDiagram
 
 | Feature / Resource | `ROLE_SUPER_ADMIN` | `ROLE_STORE_ADMIN` | `ROLE_INVENTORY_MANAGER` | `ROLE_CASHIER` |
 |---|:---:|:---:|:---:|:---:|
+| **Platform Governance & User Directory** (`/admin/dashboard`) |  Full |  No Access |  No Access |  No Access |
 | **Platform Tenant Management** (`/admin/stores`) |  Full |  No Access |  No Access |  No Access |
-| **Platform User Access Dashboard** (`/admin/dashboard`) |  Full |  No Access |  No Access |  No Access |
 | **Store Staff & Role Delegation** (`/staff`) |  Full |  Full |  No Access |  No Access |
-| **Financial Ledger & Accounts** (`/accounts`, `/transactions`) |  Full |  Full |  No Access |  No Access |
-| **Product Catalog & Restock** (`/inventory`) |  Full |  Full |  Full |  Read Only |
-| **Serial Numbers & Barcode Printing** |  Full |  Full |  Full |  Read Only |
-| **POS Billing & Checkout** (`/pos`) |  Full |  Full |  No Access |  Full |
-| **Invoice Ledger & Returns** (`/invoices`) |  Full |  Full |  Read Only |  Full |
-| **Cash Drawer Open / Close / Pay-In / Pay-Out** (`/daily-register`)|  Full |  Full |  No Access |  Full |
-| **Daily Executive Financial Reports** (`/reports`)|  Full |  Full |  No Access |  No Access |
+| **Financial Ledger & Accounts** (`/accounts`, `/transactions`) |  Impersonation Only |  Full |  No Access |  No Access |
+| **Product Catalog & Restock** (`/inventory`) |  Impersonation Only |  Full |  Full |  Read Only |
+| **Serial Numbers & Barcode Printing** |  Impersonation Only |  Full |  Full |  Read Only |
+| **POS Billing & Checkout** (`/pos`) |  Impersonation Only |  Full |  No Access |  Full |
+| **Invoice Ledger & Returns** (`/invoices`) |  Impersonation Only |  Full |  Read Only |  Full |
+| **Cash Drawer Open / Close / Pay-In / Pay-Out** (`/daily-register`)|  Impersonation Only |  Full |  No Access |  Full |
+| **Daily Executive Financial Reports** (`/reports`)|  Impersonation Only |  Full |  No Access |  No Access |
 
 ---
 
@@ -251,6 +282,7 @@ erDiagram
 |---|---|---|
 | `GET` | `/admin/metrics` | Platform Governance KPIs (Total stores, active/trial/suspended, user role counts, expiring subscriptions; strictly zero sales or financial figures) |
 | `GET` | `/admin/tenants` | Paginated list of tenants with status and plan tier filtering |
+| `GET` | `/admin/tenants/:id` | Detailed tenant profile including settings and owner information |
 | `POST` | `/admin/tenants` | Provision new store tenant atomically |
 | `PUT` | `/admin/tenants/:id/status` | Activate or suspend store tenant |
 | `PUT` | `/admin/tenants/:id/subscription` | Extend subscription expiration and update plan tier |
@@ -259,6 +291,8 @@ erDiagram
 | `PUT` | `/admin/users/:id/access` | Update user role, store assignment, or status |
 | `PUT` | `/admin/users/:id/reset-password` | Administrative password reset for user account |
 | `DELETE` | `/admin/users/:id` | Delete platform user account |
+| `GET` | `/admin/tenants/:id/settings` | Retrieve store receipt and tax configurations |
+| `PUT` | `/admin/tenants/:id/settings` | Update store receipt headers, footers, tax numbers, and negative stock policy |
 
 ### 7.3 Store Staff Management (`/staff` or `/api/staff`)
 | Method | Endpoint | Description |
