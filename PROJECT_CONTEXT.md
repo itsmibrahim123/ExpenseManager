@@ -249,14 +249,15 @@ erDiagram
 ### 7.2 Super Admin Console (`/admin` or `/api/admin`)
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/admin/metrics` | Platform KPIs (Total stores, active subscriptions, POS volume) |
+| `GET` | `/admin/metrics` | Platform Governance KPIs (Total stores, active/trial/suspended, user role counts, expiring subscriptions; strictly zero sales or financial figures) |
 | `GET` | `/admin/tenants` | Paginated list of tenants with status and plan tier filtering |
 | `POST` | `/admin/tenants` | Provision new store tenant atomically |
 | `PUT` | `/admin/tenants/:id/status` | Activate or suspend store tenant |
 | `PUT` | `/admin/tenants/:id/subscription` | Extend subscription expiration and update plan tier |
 | `GET` | `/admin/users` | Retrieve all platform users with role, store, and status filters |
 | `POST` | `/admin/users` | Create a new user across any tenant or platform role |
-| `PUT` | `/admin/users/:id/access` | Update user role, store assignment, status, or password |
+| `PUT` | `/admin/users/:id/access` | Update user role, store assignment, or status |
+| `PUT` | `/admin/users/:id/reset-password` | Administrative password reset for user account |
 | `DELETE` | `/admin/users/:id` | Delete platform user account |
 
 ### 7.3 Store Staff Management (`/staff` or `/api/staff`)

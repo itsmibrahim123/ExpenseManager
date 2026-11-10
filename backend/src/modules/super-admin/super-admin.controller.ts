@@ -12,12 +12,16 @@ import {
   HttpCode,
   Req,
   ParseIntPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import {
   TenantOnboardingDto,
   UpdateTenantStatusDto,
   UpdateSubscriptionDto,
+  CreatePlatformUserDto,
+  UpdateUserAccessDto,
+  ResetUserPasswordDto,
 } from './dto/super-admin.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -70,32 +74,58 @@ export class SuperAdminController {
     return this.superAdminService.updateSubscription(id, dto);
   }
 
+  /**
+   * Platform Governance Metrics (Stores, Subscriptions, User Roles)
+   * Strictly devoid of any store sales or POS figures.
+   */
   @Get('metrics')
   async getPlatformMetrics() {
     return this.superAdminService.getPlatformMetrics();
   }
 
+  /**
+   * Platform User Directory & Access Management
+   */
   @Get('users')
   async getAllUsers(
+    @Query('search') search?: string,
     @Query('query') query?: string,
     @Query('role') role?: string,
+    @Query('tenantId') tenantId?: string,
     @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.superAdminService.getAllUsers(query, role, status);
+    const searchTerm = search || query;
+    const pageNum = page !== undefined ? parseInt(page, 10) : undefined;
+    const limitNum = limit !== undefined ? parseInt(limit, 10) : undefined;
+    return this.superAdminService.getAllUsers(searchTerm, role, tenantId, status, pageNum, limitNum);
   }
 
   @Post('users')
   @HttpCode(HttpStatus.CREATED)
-  async createPlatformUser(@Body() data: any) {
-    return this.superAdminService.createPlatformUser(data);
+  async createPlatformUser(@Body() dto: CreatePlatformUserDto) {
+    return this.superAdminService.createPlatformUser(dto);
   }
 
   @Put('users/:id/access')
   async updateUserAccess(
     @Param('id', ParseIntPipe) id: number,
-    @Body() data: any,
+    @Body() dto: UpdateUserAccessDto,
   ) {
-    return this.superAdminService.updateUserAccess(id, data);
+    return this.superAdminService.updateUserAccess(id, dto);
+  }
+
+  @Put('users/:id/reset-password')
+  async resetUserPassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ResetUserPasswordDto,
+  ) {
+    const password = dto.newPassword || dto.password;
+    if (!password) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
+    return this.superAdminService.resetUserPassword(id, password);
   }
 
   @Delete('users/:id')

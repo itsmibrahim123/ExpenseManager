@@ -3,7 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, Repository, MoreThanOrEqual } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 
@@ -13,10 +13,10 @@ import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Account } from '../accounts/entities/account.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import { Category } from '../categories/entities/category.entity';
-import { Invoice } from '../invoices/entities/invoice.entity';
 import {
   TenantOnboardingDto,
   UpdateSubscriptionDto,
+  PlatformGovernanceMetricsDto,
 } from './dto/super-admin.dto';
 
 @Injectable()
@@ -29,8 +29,6 @@ export class SuperAdminService {
     private readonly settingsRepo: Repository<TenantSettings>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(Invoice)
-    private readonly invoiceRepo: Repository<Invoice>,
   ) {}
 
   async provisionTenant(dto: TenantOnboardingDto) {
@@ -134,19 +132,20 @@ export class SuperAdminService {
       await queryRunner.manager.save(walkInCustomer);
 
       // 6. Seed default Categories
-      const categoriesToSeed = [
-        { name: 'Inventory Purchase', type: 'EXPENSE' },
-        { name: 'Rent & Utilities', type: 'EXPENSE' },
-        { name: 'Salaries', type: 'EXPENSE' },
-        { name: 'POS Retail Sales', type: 'INCOME' },
+      const categories = [
+        { name: 'Store Retail Sales', type: 'INCOME', sortOrder: 0 },
+        { name: 'Supplier Restock', type: 'EXPENSE', sortOrder: 1 },
+        { name: 'Shop Utilities & Rent', type: 'EXPENSE', sortOrder: 2 },
+        { name: 'Staff Wages & Payroll', type: 'EXPENSE', sortOrder: 3 },
       ];
-      for (const cat of categoriesToSeed) {
+
+      for (const cat of categories) {
         const category = queryRunner.manager.create(Category, {
           tenantId: savedTenant.id,
           userId: savedOwner.id,
           name: cat.name,
           type: cat.type,
-          sortOrder: 0,
+          sortOrder: cat.sortOrder,
           archived: false,
         });
         await queryRunner.manager.save(category);
@@ -254,7 +253,12 @@ export class SuperAdminService {
     return this.getTenantById(id);
   }
 
-  async getPlatformMetrics() {
+  /**
+   * Pure Platform Governance KPIs:
+   * Returns operational tenant & user metrics only.
+   * NEVER queries, aggregates, or exposes store sales, POS volumes, invoices, or revenue.
+   */
+  async getPlatformMetrics(): Promise<PlatformGovernanceMetricsDto> {
     const totalTenants = await this.tenantRepo.count();
     const activeTenants = await this.tenantRepo.count({
       where: { status: TenantStatus.ACTIVE },
@@ -265,30 +269,47 @@ export class SuperAdminService {
     const suspendedTenants = await this.tenantRepo.count({
       where: { status: TenantStatus.SUSPENDED },
     });
-    const cancelledTenants = await this.tenantRepo.count({
-      where: { status: TenantStatus.CANCELLED },
+
+    const totalUsers = await this.userRepo.count();
+    const superAdmin = await this.userRepo.count({
+      where: { role: UserRole.ROLE_SUPER_ADMIN },
+    });
+    const storeAdmin = await this.userRepo.count({
+      where: { role: UserRole.ROLE_STORE_ADMIN },
+    });
+    const inventoryManager = await this.userRepo.count({
+      where: { role: UserRole.ROLE_INVENTORY_MANAGER },
+    });
+    const cashier = await this.userRepo.count({
+      where: { role: UserRole.ROLE_CASHIER },
     });
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const newStoresLast7Days = await this.tenantRepo.count({
-      where: { createdAt: MoreThanOrEqual(sevenDaysAgo) },
-    });
+    // Subscriptions ending in <= 7 days or overdue for review (active or trial)
+    const in7Days = new Date();
+    in7Days.setDate(in7Days.getDate() + 7);
 
-    const invoices = await this.invoiceRepo.find();
-    const totalSalesVolume30Days = invoices.reduce(
-      (sum, inv) => sum + (Number(inv.grandTotal) || 0),
-      0,
-    );
+    const expiringSubscriptionsCount = await this.tenantRepo
+      .createQueryBuilder('t')
+      .where('t.expiresAt IS NOT NULL')
+      .andWhere('t.expiresAt <= :in7Days', { in7Days })
+      .andWhere('t.status IN (:...statuses)', {
+        statuses: [TenantStatus.ACTIVE, TenantStatus.TRIAL],
+      })
+      .getCount();
 
     return {
       totalTenants,
       activeTenants,
-      trialTenants,
       suspendedTenants,
-      cancelledTenants,
-      newStoresLast7Days,
-      totalSalesVolume30Days,
+      trialTenants,
+      totalUsers,
+      usersByRole: {
+        superAdmin,
+        storeAdmin,
+        inventoryManager,
+        cashier,
+      },
+      expiringSubscriptionsCount,
     };
   }
 
@@ -305,23 +326,55 @@ export class SuperAdminService {
     return settings;
   }
 
-  async getAllUsers(search?: string, role?: string, status?: string) {
-    const qb = this.userRepo.createQueryBuilder('u')
-      .orderBy('u.createdAt', 'DESC');
+  /**
+   * Sanitized Platform User Directory:
+   * Returns user profiles joined ONLY with basic Tenant metadata.
+   * Strictly avoids joining sales, invoices, or register financial figures.
+   */
+  async getAllUsers(
+    search?: string,
+    role?: string,
+    tenantId?: string,
+    status?: string,
+    page?: number,
+    limit?: number,
+  ) {
+    const qb = this.userRepo.createQueryBuilder('u').orderBy('u.createdAt', 'DESC');
 
-    if (search) {
-      qb.andWhere(
-        '(LOWER(u.fullName) LIKE :s OR LOWER(u.email) LIKE :s)',
-        { s: `%${search.toLowerCase()}%` },
-      );
+    if (search && search.trim() !== '') {
+      const s = `%${search.trim().toLowerCase()}%`;
+      qb.andWhere('(LOWER(u.fullName) LIKE :s OR LOWER(u.email) LIKE :s)', { s });
     }
 
     if (role && role !== 'ALL') {
       qb.andWhere('u.role = :role', { role });
     }
 
+    if (tenantId && tenantId !== 'ALL') {
+      if (tenantId === 'PLATFORM' || tenantId === 'GLOBAL') {
+        qb.andWhere('u.tenantId IS NULL');
+      } else {
+        qb.andWhere('u.tenantId = :tenantId', { tenantId });
+      }
+    }
+
     if (status && status !== 'ALL') {
-      qb.andWhere('(u.userStatus = :status OR u.status = :status)', { status });
+      const normalizedReqStatus = status.toUpperCase();
+      if (normalizedReqStatus === 'SUSPENDED' || normalizedReqStatus === 'INACTIVE') {
+        qb.andWhere(
+          '(u.status = :s1 OR u.userStatus = :s2 OR u.status = :s2)',
+          { s1: 'SUSPENDED', s2: 'INACTIVE' },
+        );
+      } else if (normalizedReqStatus === 'ACTIVE') {
+        qb.andWhere(
+          '(u.status = :act OR u.userStatus = :act) AND u.status != :susp AND u.userStatus != :inact',
+          { act: 'ACTIVE', susp: 'SUSPENDED', inact: 'INACTIVE' },
+        );
+      }
+    }
+
+    if (page !== undefined && limit !== undefined && limit > 0) {
+      qb.skip(page * limit).take(limit);
     }
 
     const users = await qb.getMany();
@@ -329,10 +382,24 @@ export class SuperAdminService {
     const tenantMap = new Map(tenants.map((t) => [t.id, t]));
 
     return users.map((u) => {
-      const { passwordHash: _, ...rest } = u;
       const tenant = u.tenantId ? tenantMap.get(u.tenantId) : null;
+      const isSuspended =
+        u.status === 'SUSPENDED' ||
+        u.status === 'INACTIVE' ||
+        u.userStatus === UserStatus.INACTIVE;
+      const normalizedStatus = isSuspended ? 'SUSPENDED' : 'ACTIVE';
+
       return {
-        ...rest,
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        role: u.role,
+        status: normalizedStatus,
+        userStatus: isSuspended ? UserStatus.INACTIVE : UserStatus.ACTIVE,
+        tenantId: u.tenantId || null,
+        tenantName: tenant ? tenant.storeName : null,
+        createdAt: u.createdAt,
+        lastLoginAt: (u as any).lastLoginAt || u.updatedAt || null,
         tenant: tenant
           ? {
               id: tenant.id,
@@ -350,7 +417,7 @@ export class SuperAdminService {
     id: number,
     data: {
       role?: UserRole;
-      status?: UserStatus;
+      status?: string;
       tenantId?: string | null;
       fullName?: string;
       password?: string;
@@ -373,8 +440,14 @@ export class SuperAdminService {
     }
 
     if (data.status) {
-      user.userStatus = data.status;
-      user.status = data.status;
+      const normalized = data.status.toUpperCase();
+      if (normalized === 'SUSPENDED' || normalized === 'INACTIVE') {
+        user.status = 'SUSPENDED';
+        user.userStatus = UserStatus.INACTIVE;
+      } else {
+        user.status = 'ACTIVE';
+        user.userStatus = UserStatus.ACTIVE;
+      }
     }
 
     if (data.tenantId !== undefined) {
@@ -384,7 +457,7 @@ export class SuperAdminService {
           throw new NotFoundException(`Tenant store not found: ${data.tenantId}`);
         }
         user.tenantId = tenant.id;
-      } else if (data.tenantId === null) {
+      } else if (data.tenantId === null || user.role === UserRole.ROLE_SUPER_ADMIN) {
         user.tenantId = null;
       }
     }
@@ -394,8 +467,50 @@ export class SuperAdminService {
     }
 
     const saved = await this.userRepo.save(user);
-    const { passwordHash: _, ...rest } = saved;
-    return rest;
+    const tenant = saved.tenantId ? await this.tenantRepo.findOne({ where: { id: saved.tenantId } }) : null;
+
+    const isSuspended =
+      saved.status === 'SUSPENDED' ||
+      saved.status === 'INACTIVE' ||
+      saved.userStatus === UserStatus.INACTIVE;
+
+    return {
+      id: saved.id,
+      fullName: saved.fullName,
+      email: saved.email,
+      role: saved.role,
+      status: isSuspended ? 'SUSPENDED' : 'ACTIVE',
+      userStatus: isSuspended ? UserStatus.INACTIVE : UserStatus.ACTIVE,
+      tenantId: saved.tenantId || null,
+      tenantName: tenant ? tenant.storeName : null,
+      createdAt: saved.createdAt,
+      lastLoginAt: (saved as any).lastLoginAt || saved.updatedAt || null,
+      tenant: tenant
+        ? {
+            id: tenant.id,
+            storeName: tenant.storeName,
+            slug: tenant.slug,
+            status: tenant.status,
+            planTier: tenant.planTier,
+          }
+        : null,
+    };
+  }
+
+  async resetUserPassword(id: number, newPassword: string) {
+    if (!newPassword || newPassword.trim().length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    user.passwordHash = await bcrypt.hash(newPassword.trim(), 10);
+    await this.userRepo.save(user);
+    return {
+      success: true,
+      message: `Password reset successfully for user "${user.fullName}" (${user.email})`,
+    };
   }
 
   async createPlatformUser(data: {
@@ -405,7 +520,8 @@ export class SuperAdminService {
     role: UserRole;
     tenantId?: string | null;
   }) {
-    const existing = await this.userRepo.findOne({ where: { email: data.email.toLowerCase().trim() } });
+    const cleanEmail = data.email.toLowerCase().trim();
+    const existing = await this.userRepo.findOne({ where: { email: cleanEmail } });
     if (existing) {
       throw new BadRequestException(`Email '${data.email}' is already registered`);
     }
@@ -419,10 +535,18 @@ export class SuperAdminService {
       throw new BadRequestException('Tenant store is required for store roles');
     }
 
+    let tenant: Tenant | null = null;
+    if (tenantId && data.role !== UserRole.ROLE_SUPER_ADMIN) {
+      tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+      if (!tenant) {
+        throw new NotFoundException(`Tenant store not found: ${tenantId}`);
+      }
+    }
+
     const passwordHash = await bcrypt.hash(data.password, 10);
     const user = this.userRepo.create({
       fullName: data.fullName.trim(),
-      email: data.email.toLowerCase().trim(),
+      email: cleanEmail,
       passwordHash,
       role: data.role,
       userStatus: UserStatus.ACTIVE,
@@ -431,8 +555,28 @@ export class SuperAdminService {
     });
 
     const saved = await this.userRepo.save(user);
-    const { passwordHash: _, ...rest } = saved;
-    return rest;
+
+    return {
+      id: saved.id,
+      fullName: saved.fullName,
+      email: saved.email,
+      role: saved.role,
+      status: 'ACTIVE',
+      userStatus: UserStatus.ACTIVE,
+      tenantId: saved.tenantId,
+      tenantName: tenant ? tenant.storeName : null,
+      createdAt: saved.createdAt,
+      lastLoginAt: null,
+      tenant: tenant
+        ? {
+            id: tenant.id,
+            storeName: tenant.storeName,
+            slug: tenant.slug,
+            status: tenant.status,
+            planTier: tenant.planTier,
+          }
+        : null,
+    };
   }
 
   async deletePlatformUser(id: number, currentUserId: number) {

@@ -39,15 +39,33 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (
+      user.status === 'SUSPENDED' ||
+      user.status === 'INACTIVE' ||
+      user.userStatus === UserStatus.INACTIVE
+    ) {
+      throw new UnauthorizedException(
+        'Your account has been suspended. Please contact your platform administrator.',
+      );
+    }
+
     let storeName = 'SaaS Platform Admin';
     let tenantSettings: any = null;
 
     if (user.tenantId) {
       try {
         const tenant = await this.tenantService.findById(user.tenantId);
-        storeName = tenant.storeName;
-        tenantSettings = await this.tenantService.getSettings(user.tenantId);
+        if (tenant) {
+          if (tenant.status === 'SUSPENDED' || tenant.status === 'CANCELLED') {
+            throw new UnauthorizedException(
+              'Your store account is currently suspended. Please contact platform administration.',
+            );
+          }
+          storeName = tenant.storeName;
+          tenantSettings = await this.tenantService.getSettings(user.tenantId);
+        }
       } catch (e) {
+        if (e instanceof UnauthorizedException) throw e;
         // tenant lookup fallback
       }
     }
