@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api/transactions';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_URL = `${BASE_URL}/api/transactions`;
 
 const getTransactions = (token) => {
     return axios.get(API_URL, {
@@ -25,8 +26,6 @@ const transfer = (token, transferData) => {
         }
     });
 };
-
-// ... and so on for search and attachments
 
 export default {
     getTransactions,

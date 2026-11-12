@@ -33,12 +33,7 @@ import TagIcon from '@mui/icons-material/Tag';
 import BarcodeLabelSheet from '../components/print/BarcodeLabelSheet';
 import { getAccountsByUser } from '../api/accountsService';
 import { useAuth } from '../context/AuthContext';
-
-const getImageUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
-};
+import { getImageUrl } from '../utils/imageUrl';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB

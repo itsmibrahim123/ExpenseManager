@@ -49,17 +49,34 @@ export const ALL_ENTITIES = [
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USERNAME', process.env.USER || 'itsmibrahim'),
-        password: config.get<string>('DB_PASSWORD', ''),
-        database: config.get<string>('DB_NAME', 'expensemngr_nest'),
-        entities: ALL_ENTITIES,
-        synchronize: true, // Auto-create schema in development
-        logging: false,
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        const isProduction = config.get<string>('NODE_ENV') === 'production';
+        const useSsl = config.get<string>('DATABASE_SSL') === 'true' || isProduction;
+
+        const baseConfig = databaseUrl
+          ? { url: databaseUrl }
+          : {
+              host: config.get<string>('DATABASE_HOST') || config.get<string>('DB_HOST', 'localhost'),
+              port: config.get<number>('DATABASE_PORT') || config.get<number>('DB_PORT', 5432),
+              username: config.get<string>('DATABASE_USER') || config.get<string>('DB_USERNAME', process.env.USER || 'postgres'),
+              password: config.get<string>('DATABASE_PASSWORD') || config.get<string>('DB_PASSWORD', ''),
+              database: config.get<string>('DATABASE_NAME') || config.get<string>('DB_NAME', 'expensemngr_nest'),
+            };
+
+        const typeormSync = config.get<string>('TYPEORM_SYNC');
+        const synchronize = typeormSync !== undefined ? typeormSync === 'true' : !isProduction;
+
+        return {
+          type: 'postgres',
+          ...baseConfig,
+          entities: ALL_ENTITIES,
+          autoLoadEntities: true,
+          synchronize,
+          ssl: useSsl ? { rejectUnauthorized: false } : false,
+          logging: config.get<string>('DB_LOGGING') === 'true',
+        };
+      },
     }),
   ],
 })

@@ -24,12 +24,7 @@ import { createInvoice } from '../api/invoiceApi';
 import { getAccountsByUser } from '../api/accountsService';
 import { useAuth } from '../context/AuthContext';
 import ThermalReceipt from '../components/print/ThermalReceipt';
-
-const getImageUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`;
-};
+import { getImageUrl } from '../utils/imageUrl';
 
 const POSBilling = () => {
     const { user } = useAuth();

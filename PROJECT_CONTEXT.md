@@ -398,13 +398,39 @@ BROWSER=none PORT=3000 npm start
 ```
 The React 19 application runs on **`http://localhost:3000`**.
 
-### 3. Production Build & Static Assets
-```bash
-# Build React static distribution bundle
-cd frontend
-npm run build
-```
-Static builds can be hosted via NGINX, Cloudflare Pages, or served through NestJS static serving.
+### 3. Production Deployment (Render + Vercel)
+
+#### Backend on Render (Web Service & Managed PostgreSQL)
+- **Runtime:** Node.js
+- **Build Command:** `cd backend && npm install && npm run build`
+- **Start Command:** `cd backend && node dist/main.js`
+- **Environment Variables:**
+  - `PORT`: Automatically assigned by Render (e.g. `10000`)
+  - `NODE_ENV`: `production`
+  - `DATABASE_URL`: Render PostgreSQL connection string (`postgresql://user:password@host/dbname`)
+  - `DATABASE_SSL`: `true` (enables `{ rejectUnauthorized: false }` for PostgreSQL TLS)
+  - `TYPEORM_SYNC`: `false` (in production, schema managed via migrations/DDL)
+  - `JWT_SECRET`: Random 256-bit secure secret string
+  - `CORS_ORIGIN`: Vercel frontend URL (e.g. `https://expensemanager.vercel.app`)
+
+#### Frontend on Vercel (Single-Page Application)
+- **Framework Preset:** Create React App
+- **Root Directory:** `frontend`
+- **Build Command:** `npm run build`
+- **Output Directory:** `build`
+- **Environment Variables:**
+  - `REACT_APP_API_URL`: Render Backend Web Service URL (e.g. `https://expensemanager-api.onrender.com`)
+- **SPA Routing:** Configured via [`frontend/vercel.json`](file:///Users/itsmibrahim/Documents/ERP/Business/ExpenseManager/frontend/vercel.json) rewrites:
+  ```json
+  {
+    "rewrites": [
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
+    ]
+  }
+  ```
 
 ---
 

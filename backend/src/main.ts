@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { join } from 'path';
+import { resolve } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
 
@@ -10,8 +10,8 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Ensure uploads directory exists
-  const uploadsDir = join(process.cwd(), 'uploads');
+  // Ensure uploads directory exists (absolute path for production safety)
+  const uploadsDir = resolve(process.cwd(), 'uploads');
   if (!existsSync(uploadsDir)) {
     mkdirSync(uploadsDir, { recursive: true });
   }
@@ -26,12 +26,29 @@ async function bootstrap() {
     },
   });
 
-  // Enable CORS for frontend
+  // Dynamic CORS configuration for Vercel, Render, and local development
+  const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+    : ['http://localhost:3000'];
+
   app.enableCors({
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'X-Tenant-Id', 'Accept'],
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        corsOrigins.includes('*') ||
+        corsOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('localhost')
+      ) {
+        callback(null, true);
+      } else {
+        logger.warn(`Blocked by CORS policy: ${origin}`);
+        callback(new Error('Blocked by CORS policy'));
+      }
+    },
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'Accept'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   // Global HTTP Request Logger
@@ -62,7 +79,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('ExpenseManager SaaS ERP Backend API')
     .setDescription(
-      'Multi-tenant SaaS ERP Backend migrated to NestJS + TypeScript with RBAC, POS checkout calculations, and daily register accounting workflows.',
+      'Multi-tenant SaaS ERP Backend running on NestJS + TypeScript with RBAC, POS checkout calculations, and daily register accounting workflows.',
     )
     .setVersion('1.0')
     .addBearerAuth()
@@ -73,7 +90,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 8080;
   await app.listen(port, '0.0.0.0');
-  logger.log(`🚀 ExpenseManager NestJS Backend running on: http://localhost:${port}`);
+  logger.log(`🚀 ExpenseManager NestJS Backend running on: http://0.0.0.0:${port}`);
   logger.log(`📚 Swagger API Documentation available at: http://localhost:${port}/api/docs`);
 }
 

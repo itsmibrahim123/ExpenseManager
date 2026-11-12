@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api/auth';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_URL = `${BASE_URL}/api/auth`;
 
 export const register = (data, email, password, preferredCurrency) => {
   if (typeof data === 'object' && data !== null) {
